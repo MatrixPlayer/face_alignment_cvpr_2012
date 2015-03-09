@@ -35,36 +35,45 @@ struct Vote
 	bool check;
 };
 
-void
-get_headpose_votes_mt
+// Loads and parse a configuration file
+bool
+loadConfigFile
   (
-  const ImageSample& sample,
-  const Forest<HeadPoseSample>& forest,
-  cv::Rect face_box,
-  std::vector<HeadPoseLeaf*>& leafs,
+  std::string path,
+  ForestParam &param
+  );
+
+// Loads and parse annotations
+bool
+loadAnnotations
+  (
+  std::string path,
+  std::vector<FaceAnnotation> &annotations
+  );
+
+// Called from "estimateHeadPose"
+void
+getHeadPoseVotesMT
+  (
+  const ImageSample &sample,
+  const Forest<HeadPoseSample> &forest,
+  cv::Rect face_bbox,
+  std::vector<HeadPoseLeaf*> &leafs,
   int step_size = 5
   );
 
+// Called from "estimateFacialFeatures"
 void
-get_ffd_votes_mt
+getFacialFeaturesVotesMT
   (
-  const ImageSample& sample,
-  const Forest<MPSample>& forest,
-  cv::Rect face_box,
-  std::vector<std::vector<Vote> >& votes,
-  MultiPartEstimatorOption option = MultiPartEstimatorOption()
+  const ImageSample &sample,
+  const Forest<MPSample> &forest,
+  cv::Rect face_bbox,
+  std::vector< std::vector<Vote> > &votes,
+  MultiPartEstimatorOption options = MultiPartEstimatorOption()
   );
 
-// loads and parse annotations
-// returns false if file not found
-bool
-load_annotations
-  (
-  std::vector<FaceAnnotation>& annotations,
-  std::string url
-  );
-
-// computes the area under curve
+// Computes the area under curve called from "analizeFace"
 float
 areaUnderCurve
   (
@@ -74,7 +83,7 @@ areaUnderCurve
   double std
   );
 
-// returns the intersection
+// Returns the intersection called from "detectFace" and "extractFace"
 cv::Rect
 intersect
   (
@@ -83,7 +92,7 @@ intersect
   );
 
 // extract a region of interest
-void
+/*void
 extract_face
   (
   const cv::Mat& img,
@@ -103,25 +112,6 @@ rescale_img
   FaceAnnotation& ann
   );
 
-// loads and parse the config file
-// in case of failure this function returns default values
-bool
-loadConfigFile
-  (
-  std::string filename,
-  ForestParam& param
-  );
-
-// plots all the votes for each part
-void
-plot_ffd_votes
-  (
-  const cv::Mat& face,
-  std::vector<std::vector<Vote> >& votes,
-  std::vector<cv::Point> results,
-  std::vector<cv::Point> gt
-  );
-
 // displays the annotations
 void
 plot_face
@@ -129,5 +119,15 @@ plot_face
   const cv::Mat &img,
   FaceAnnotation ann
   );
+
+// Plots all the votes for each part from "estimateFacialFeatures"
+void
+plot_ffd_votes
+  (
+  const cv::Mat& face,
+  std::vector<std::vector<Vote> >& votes,
+  std::vector<cv::Point> results,
+  std::vector<cv::Point> gt
+  );*/
 
 #endif /* FACE_UTILS_HPP */

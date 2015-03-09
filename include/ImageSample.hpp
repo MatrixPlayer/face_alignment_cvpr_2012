@@ -158,7 +158,7 @@ public:
     (
     const cv::Mat img,
     std::vector<int> features,
-    bool useIntegral
+    bool use_integral = false
     );
 
   ImageSample
@@ -166,7 +166,7 @@ public:
     const cv::Mat img,
     std::vector<int> features,
     FeatureChannelFactory &fcf,
-    bool useIntegral
+    bool use_integral = false
     );
 
   virtual
@@ -191,9 +191,9 @@ public:
   extractFeatureChannels
     (
     const cv::Mat &img,
-    std::vector<cv::Mat> &vImg,
+    std::vector<cv::Mat> &feature_channels,
     std::vector<int> features,
-    bool useIntegral,
+    bool use_integral,
     FeatureChannelFactory &fcf
     ) const;
 
@@ -208,28 +208,28 @@ public:
   width
     () const
   {
-    return featureChannels[0].cols;
+    return m_feature_channels[0].cols;
   };
 
   int
   height
     () const
   {
-    return featureChannels[0].rows;
+    return m_feature_channels[0].rows;
   };
 
   void
   show
     () const
   {
-    cv::imshow("Image Sample", featureChannels[0]);
+    cv::imshow("Image Sample", m_feature_channels[0]);
     cv::waitKey(0);
   };
 
-  std::vector<cv::Mat> featureChannels;
+  std::vector<cv::Mat> m_feature_channels;
 
 private:
-  bool useIntegral;
+  bool m_use_integral;
 };
 
 #endif /* IMAGE_SAMPLE_HPP */

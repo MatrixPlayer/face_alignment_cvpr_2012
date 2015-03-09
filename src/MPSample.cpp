@@ -197,7 +197,7 @@ MPSample::generateSplit
   )
 {
   int patchSize = fp.faceSize * fp.patchSizeRatio;
-  int num_feat_channels = data[0]->image->featureChannels.size();
+  int num_feat_channels = data[0]->image->m_feature_channels.size();
   split.feature.generate(patchSize, rng, num_feat_channels);
 
   split.num_thresholds = 25;

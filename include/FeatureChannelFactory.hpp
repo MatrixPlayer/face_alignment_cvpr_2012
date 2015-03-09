@@ -35,37 +35,37 @@ public:
   void
   extractChannel
     (
-    int type,
-    bool useIntegral,
-    const cv::Mat &src,
+    int feature,
+    bool use_integral,
+    const cv::Mat &img,
     std::vector<cv::Mat> &channels
     )
   {
-    switch (type)
+    switch (feature)
     {
       case FC_GRAY:
       {
-        if (useIntegral)
+        if (use_integral)
         {
-          cv::Mat int_img;
-          cv::integral(src, int_img, CV_32F);
-          channels.push_back(int_img);
+          cv::Mat integral_img;
+          cv::integral(img, integral_img, CV_32F);
+          channels.push_back(integral_img);
         }
         else
-          channels.push_back(src);
+          channels.push_back(img);
         break;
       }
       case FC_NORM:
       {
-        cv::Mat normal;
-        cv::equalizeHist(src, normal);
-        if (useIntegral)
+        cv::Mat equalize_img;
+        cv::equalizeHist(img, equalize_img);
+        if (use_integral)
         {
-          cv::Mat int_img;
-          cv::integral(normal, int_img, CV_32F);
-          channels.push_back(int_img);
+          cv::Mat integral_img;
+          cv::integral(equalize_img, integral_img, CV_32F);
+          channels.push_back(integral_img);
         } else
-          channels.push_back(normal);
+          channels.push_back(equalize_img);
         break;
       }
       case FC_GABOR:
@@ -82,7 +82,7 @@ public:
           int num_treads = boost::thread::hardware_concurrency();
           boost::thread_pool::ThreadPool e(num_treads);
           for (unsigned int i=0; i < reals.size(); i++)
-            e.submit(boost::bind(&FeatureChannelFactory::gaborTransform, this, src, &channels[old_size+i], useIntegral, i, old_size));
+            e.submit(boost::bind(&FeatureChannelFactory::gaborTransform, this, img, &channels[old_size+i], use_integral, i, old_size));
           e.join_all();
         }
         else
@@ -92,20 +92,20 @@ public:
             cv::Mat final;
             cv::Mat r_mat;
             cv::Mat i_mat;
-            cv::filter2D(src, r_mat, CV_32F, reals[i]);
-            cv::filter2D(src, i_mat, CV_32F, imags[i]);
+            cv::filter2D(img, r_mat, CV_32F, reals[i]);
+            cv::filter2D(img, i_mat, CV_32F, imags[i]);
             cv::pow(r_mat, 2, r_mat);
             cv::pow(i_mat, 2, i_mat);
             cv::add(i_mat, r_mat, final);
             cv::pow(final, 0.5, final);
             cv::normalize(final, final, 0, 1, cv::NORM_MINMAX, CV_32F);
 
-            if (useIntegral)
+            if (use_integral)
             {
-              cv::Mat img;
-              final.convertTo(img, CV_8UC1, 255);
+              cv::Mat imga;
+              final.convertTo(imga, CV_8UC1, 255);
               cv::Mat integral_img;
-              cv::integral(img, integral_img, CV_32F);
+              cv::integral(imga, integral_img, CV_32F);
               channels.push_back(integral_img);
             }
             else
@@ -119,12 +119,12 @@ public:
       }
       case FC_SOBEL:
       {
-        cv::Mat sob_x(src.size(), CV_8U);
-        cv::Mat sob_y(src.size(), CV_8U);
-        cv::Sobel(src, sob_x, CV_8U, 0, 1);
-        cv::Sobel(src, sob_y, CV_8U, 1, 0);
+        cv::Mat sob_x(img.size(), CV_8U);
+        cv::Mat sob_y(img.size(), CV_8U);
+        cv::Sobel(img, sob_x, CV_8U, 0, 1);
+        cv::Sobel(img, sob_y, CV_8U, 1, 0);
 
-        if (useIntegral)
+        if (use_integral)
         {
           cv::Mat sob_x_int, sob_y_int;
           cv::integral(sob_x, sob_x_int, CV_32F);
@@ -143,12 +143,12 @@ public:
       {
         cv::Mat kernel(cv::Size(3, 3), CV_8UC1);
         kernel.setTo(cv::Scalar(1));
-        cv::Mat img_min(src.size(), CV_8U);
-        cv::Mat img_max(src.size(), CV_8U);
-        cv::erode(src, img_min, kernel);
-        cv::dilate(src, img_max, kernel);
+        cv::Mat img_min(img.size(), CV_8U);
+        cv::Mat img_max(img.size(), CV_8U);
+        cv::erode(img, img_min, kernel);
+        cv::dilate(img, img_max, kernel);
 
-        if (useIntegral)
+        if (use_integral)
         {
           cv::Mat img_min_int, img_max_int;
           cv::integral(img_min, img_min_int, CV_32F);
@@ -165,16 +165,16 @@ public:
       }
       case FC_CANNY:
       {
-        cv::Mat cannyImg;
-        cv::Canny(src, cannyImg, -1, 5);
-        if (useIntegral)
+        cv::Mat canny_img;
+        cv::Canny(img, canny_img, -1, 5);
+        if (use_integral)
         {
-          cv::Mat int_img;
-          cv::integral(cannyImg, int_img, CV_32F);
-          channels.push_back(int_img);
+          cv::Mat integral_img;
+          cv::integral(canny_img, integral_img, CV_32F);
+          channels.push_back(integral_img);
         }
         else
-          channels.push_back(cannyImg);
+          channels.push_back(canny_img);
         break;
       }
       default:

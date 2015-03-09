@@ -10,7 +10,6 @@
 #define FACE_FOREST_HPP
 
 // ----------------------- INCLUDES --------------------------------------------
-#include <trace.hpp>
 #include <Viewer.hpp>
 #include <Forest.hpp>
 #include <SplitGen.hpp>
@@ -62,9 +61,9 @@ struct FaceForestOptions
 {
   ForestParam hp_forest_param;
   ForestParam mp_forest_param;
-  FaceDetectionOption face_detection_option;
-  HeadPoseEstimatorOption pose_estimator_option;
-  MultiPartEstimatorOption multi_part_option;
+  FaceDetectionOption fd_option;
+  HeadPoseEstimatorOption hp_option;
+  MultiPartEstimatorOption mp_option;
   std::vector<std::string> mp_tree_paths;
 };
 
@@ -96,52 +95,52 @@ public:
     () {};
 
   static void
-  detect_face
+  estimateHeadPose
     (
-    const cv::Mat& img,
-    cv::CascadeClassifier &face_cascade,
-    FaceDetectionOption option,
-    std::vector<cv::Rect> &faces
-    );
-
-  static void
-  estimate_head_pose
-    (
-    const ImageSample &img_sample,
+    const ImageSample &sample,
     const cv::Rect &face_bbox,
     const Forest<HeadPoseSample> &forest,
-    HeadPoseEstimatorOption option,
-    float *head_pose,
+    HeadPoseEstimatorOption options,
+    float *headpose,
     float *variance
     );
 
   static void
-  estimate_ffd
+  estimateFacialFeatures
     (
-    const ImageSample &image_sample,
+    const ImageSample &sample,
     const cv::Rect face_bbox,
     const Forest<MPSample> &forest,
-    MultiPartEstimatorOption option,
+    MultiPartEstimatorOption options,
     std::vector<cv::Point> &ffd_cordinates
     );
 
   static void
-  show_results
+  showResults
     (
     const cv::Mat img,
     std::vector<Face> &faces,
     upm::Viewer &viewer
     );
 
+  static void
+  detectFace
+    (
+    const cv::Mat &img,
+    cv::CascadeClassifier &face_cascade,
+    FaceDetectionOption fd_option,
+    std::vector<cv::Rect> &faces_bboxes
+    );
+
   void
-  analize_image
+  analyzeImage
     (
     cv::Mat img,
     std::vector<Face> &faces
     );
 
   void
-  analize_face
+  analyzeFace
     (
     const cv::Mat img,
     cv::Rect face_bbox,
@@ -150,33 +149,18 @@ public:
     );
 
 private:
-
   void
-  loading_all_trees
+  getPathsToTrees
     (
-     std::vector<std::string> urls
-     );
-
-  void
-  get_paths_to_trees
-    (
-    std::string url,
+    std::string path,
     std::vector<std::string> &urls
     );
 
-  bool
-  load_face_cascade
+  void
+  loadingAllTrees
     (
-    std::string url
-    )
-  {
-    if (!m_face_cascade.load(url))
-    {
-      TRACE("--(!)Error loading face cascade : " << url);
-      return false;
-    }
-    return true;
-  };
+     std::vector<std::string> urls
+     );
 
   FaceForestOptions m_ff_options;
   cv::CascadeClassifier m_face_cascade;

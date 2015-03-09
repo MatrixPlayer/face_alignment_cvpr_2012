@@ -237,9 +237,9 @@ public:
     }
   };*/
 
-  // Used from Forest 'evaluate_mt'
+  // Called from "evaluateMT" on Forest
   static void
-  evaluate_mt
+  evaluateMT
     (
     const Sample *sample,
     TreeNode<Sample> *node,
@@ -247,15 +247,13 @@ public:
     )
   {
     if (node->isLeaf())
-    {
       *leaf = node->getLeaf();
-    }
     else
     {
       if (node->eval(sample))
-        evaluate_mt(sample, node->left, leaf);
+        evaluateMT(sample, node->left, leaf);
       else
-        evaluate_mt(sample, node->right, leaf);
+        evaluateMT(sample, node->right, leaf);
     }
   };
 

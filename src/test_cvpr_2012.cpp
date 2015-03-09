@@ -43,7 +43,7 @@ processFrame
   cv::Mat frame_gray;
   cv::cvtColor(frame, frame_gray, cv::COLOR_BGR2GRAY);
 
-  ff.analize_image(frame_gray, faces);
+  ff.analyzeImage(frame_gray, faces);
 
   ticks = static_cast<double>(cv::getTickCount()) - ticks;
   return ticks;
@@ -77,7 +77,7 @@ showResults
   viewer.resizeCanvas(frame.cols, frame.rows);
   viewer.beginDrawing();
   viewer.image(frame, 0, 0, frame.cols, frame.rows);
-  ff.show_results(frame, faces, viewer);
+  ff.showResults(frame, faces, viewer);
   viewer.text(outs.str(), 20, frame.rows-20, cv::Scalar(255,0,255), 0.5);
   viewer.endDrawing(delay);
 };
@@ -153,7 +153,7 @@ main
   CV_Assert(loadConfigFile("data/config_ffd.txt", mp_param));
 
   FaceForestOptions ff_options;
-  ff_options.face_detection_option.path_face_cascade = "data/haarcascade_frontalface_alt.xml";
+  ff_options.fd_option.path_face_cascade = "data/haarcascade_frontalface_alt.xml";
   ff_options.hp_forest_param = hp_param;
   ff_options.mp_forest_param = mp_param;
 

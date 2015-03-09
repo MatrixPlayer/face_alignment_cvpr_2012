@@ -69,8 +69,8 @@ public:
   show
     ()
   {
-    cv::imshow("MPSample X", image->featureChannels[0](rect));
-    cv::Mat face = image->featureChannels[0].clone();
+    cv::imshow("MPSample X", image->m_feature_channels[0](rect));
+    cv::Mat face = image->m_feature_channels[0].clone();
     cv::rectangle(face, rect, cv::Scalar(255, 255, 255, 0));
     cv::rectangle(face, roi, cv::Scalar(255, 255, 255, 0));
     if (isPos)

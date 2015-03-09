@@ -12,32 +12,32 @@ ImageSample::ImageSample
   (
   const cv::Mat img,
   std::vector<int> features,
-  FeatureChannelFactory &fcf,
-  bool useIntegral_ = false
+  bool use_integral
   ) :
-    useIntegral(useIntegral_)
+  m_use_integral(use_integral)
 {
-  extractFeatureChannels(img, featureChannels, features, useIntegral, fcf);
+  FeatureChannelFactory fcf = FeatureChannelFactory();
+  extractFeatureChannels(img, m_feature_channels, features, m_use_integral, fcf);
 };
 
 ImageSample::ImageSample
   (
   const cv::Mat img,
   std::vector<int> features,
-  bool useIntegral_ = false
+  FeatureChannelFactory &fcf,
+  bool use_integral
   ) :
-    useIntegral(useIntegral_)
+  m_use_integral(use_integral)
 {
-  FeatureChannelFactory fcf = FeatureChannelFactory();
-  extractFeatureChannels(img, featureChannels, features, useIntegral, fcf);
+  extractFeatureChannels(img, m_feature_channels, features, m_use_integral, fcf);
 };
 
 ImageSample::~ImageSample
   ()
 {
-  for (unsigned int i=0; i < featureChannels.size(); i++)
-    featureChannels[i].release();
-  featureChannels.clear();
+  for (unsigned int i=0; i < m_feature_channels.size(); i++)
+    m_feature_channels[i].release();
+  m_feature_channels.clear();
 };
 
 int
@@ -49,8 +49,8 @@ ImageSample::evalTest
 {
   int p1 = 0;
   int p2 = 0;
-  const cv::Mat ptC = featureChannels[test.featureChannel];
-  if (!useIntegral)
+  const cv::Mat ptC = m_feature_channels[test.featureChannel];
+  if (!m_use_integral)
   {
     cv::Mat tmp = ptC(cv::Rect(test.rectA.x + rect.x, test.rectA.y + rect.y, test.rectA.width, test.rectA.height));
     p1 = (cv::sum(tmp))[0] / static_cast<float>(test.rectA.width * test.rectA.height);
@@ -82,29 +82,23 @@ ImageSample::evalTest
   const cv::Rect rect
   ) const
 {
-  return featureChannels[test.featureChannel].at<unsigned char>(rect.y + test.pointA.y, rect.x + test.pointA.x)
-      - featureChannels[test.featureChannel].at<unsigned char>(rect.y + test.pointB.y, rect.x + test.pointB.x);
+  return m_feature_channels[test.featureChannel].at<unsigned char>(rect.y + test.pointA.y, rect.x + test.pointA.x)
+      - m_feature_channels[test.featureChannel].at<unsigned char>(rect.y + test.pointB.y, rect.x + test.pointB.x);
 };
 
 void
 ImageSample::extractFeatureChannels
   (
   const cv::Mat &img,
-  std::vector<cv::Mat> &vImg,
+  std::vector<cv::Mat> &feature_channels,
   std::vector<int> features,
-  bool useIntegral,
+  bool use_integral,
   FeatureChannelFactory &fcf
   ) const
 {
-  cv::Mat img_gray;
-  if (img.channels() == 1)
-    img_gray = img;
-  else
-    cv::cvtColor(img, img_gray, cv::COLOR_RGB2GRAY);
-
   sort(features.begin(), features.end());
-  for (unsigned int i = 0; i < features.size(); i++)
-    fcf.extractChannel(features[i], useIntegral, img_gray, vImg);
+  for (unsigned int i=0; i < features.size(); i++)
+    fcf.extractChannel(features[i], use_integral, img, feature_channels);
 };
 
 void
@@ -114,6 +108,6 @@ ImageSample::getSubPatches
   std::vector<cv::Mat> &tmpPatches
   )
 {
-  for (unsigned int i=0; i < featureChannels.size(); i++)
-    tmpPatches.push_back(featureChannels[i](rect));
+  for (unsigned int i=0; i < m_feature_channels.size(); i++)
+    tmpPatches.push_back(m_feature_channels[i](rect));
 };

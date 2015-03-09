@@ -13,8 +13,8 @@
 void
 HeadPoseSample::show()
 {
-  cv::imshow("Head-pose X", image->featureChannels[0](rect));
-  cv::Mat face = image->featureChannels[0].clone();
+  cv::imshow("Head-pose X", image->m_feature_channels[0](rect));
+  cv::Mat face = image->m_feature_channels[0].clone();
   cv::rectangle(face, rect, cv::Scalar(255, 255, 255, 0));
   if (label >= 0)
     cv::rectangle(face, roi, cv::Scalar(255, 255, 255, 0));
@@ -52,7 +52,7 @@ HeadPoseSample::generateSplit
   )
 {
   int patchSize = fp.faceSize * fp.patchSizeRatio;
-  int num_feat_channels = data[0]->image->featureChannels.size();
+  int num_feat_channels = data[0]->image->m_feature_channels.size();
   split.feature.generate(patchSize, rng, num_feat_channels);
 
   split.num_thresholds = 25;

@@ -57,17 +57,17 @@ public:
       m_trees[i]->evaluate(f, m_trees[i]->root, leafs);
   }*/
 
-  // Used from 'get_headpose_votes_mt' and 'get_ffd_votes_mt'
+  // Called from "getHeadPoseVotesMT" and "getFacialFeaturesVotesMT"
   void
-  evaluate_mt
+  evaluateMT
     (
-    const Sample *f,
+    const Sample *sample,
     Leaf **leafs
     ) const
   {
     for (unsigned int i=0; i < m_trees.size(); i++)
     {
-      m_trees[i]->evaluate_mt(f, m_trees[i]->root, leafs);
+      m_trees[i]->evaluateMT(sample, m_trees[i]->root, leafs);
       leafs++;
     }
   };
