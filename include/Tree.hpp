@@ -20,6 +20,8 @@
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/string.hpp>
 #include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int.hpp>
+#include <boost/random/variate_generator.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 
@@ -41,18 +43,17 @@ public:
     m_last_save_point = 0;
   };
 
-  /*Tree
+  // Train a random tree from "train_headpose" or "train_ffd"
+  Tree
     (
     const std::vector<Sample*> &samples,
     ForestParam fp,
     boost::mt19937 *rng,
-    std::string save_path,
-    Timing job_timer = Timing()
+    std::string save_path
     )
   {
     m_rng = rng;
-    timer = job_timer;
-    timer.restart();
+    timer = Timing();
     m_last_save_point = 0;
     m_fp = fp;
     m_num_nodes = pow(2.0, m_fp.max_d+1) - 1;
@@ -64,8 +65,8 @@ public:
 
     PRINT("(+) Start Training");
     grow(root, samples);
-    save(m_save_path);
-  };*/
+    //save(m_save_path);
+  };
 
   virtual
   ~Tree
@@ -104,7 +105,7 @@ public:
     }
   }*/
 
-  /*void
+  void
   grow
     (
     TreeNode<Sample> *node,
@@ -112,38 +113,36 @@ public:
     )
   {
     int depth = node->getDepth();
-    int nElements = samples.size(); // count elements
-    std::vector<Sample*> setA, setB;
-    if (nElements < m_fp.min_s || depth >= m_fp.max_d || node->isLeaf())
+    int nelements = static_cast<int>(samples.size());
+    if (nelements < m_fp.min_s || depth >= m_fp.max_d || node->isLeaf())
     {
       node->createLeaf(samples, m_class_weights, i_leaf);
-      i_node += pow(2.0, int((m_fp.max_d - depth) + 1)) - 1;
+      i_node += pow(2.0, m_fp.max_d-depth+1) - 1;
       i_leaf++;
-      PRINT("  (a) " << int((i_node/m_num_nodes)*100) << "% : make leaf(depth: " << depth
-            << ", elements: " << samples.size() << ") [i_leaf: " << i_leaf << "]");
+      PRINT("  (1) " << (i_node/m_num_nodes)*100 << "% : make leaf(depth: " << depth <<
+            ", elements: " << samples.size() << ") [i_leaf: " << i_leaf << "]");
     }
     else
     {
-      Split bestSplit;
-      if (node->hasSplit()) //only in reload mode.
+      Split best_split;
+      std::vector<Sample*> setA, setB;
+      if (node->hasSplit()) // only in reload mode
       {
-        bestSplit = node->getSplit();
-        split(samples, bestSplit, setA, setB);
+        best_split = node->getSplit();
+        split(samples, best_split, setA, setB);
         i_node++;
-        PRINT("  (b) " << int((i_node/m_num_nodes)*100) << "% : split(depth: " << depth << ", elements: "
-              << nElements << ") [setA: " << setA.size() << ", setB: " << setB.size() << "], oob: 0");
+        PRINT("  (2) " << (i_node/m_num_nodes)*100 << "% : split(depth: " << depth <<
+              ", elements: " << nelements << ") [A: " << setA.size() << ", B: " << setB.size() << "]");
 
         grow(node->left, setA);
         grow(node->right, setB);
       }
       else
       {
-        bool testFound = findOptimalSplit(samples, bestSplit, setA, setB, depth);
-        if (testFound)
+        if (findOptimalSplit(samples, best_split, depth))
         {
-          split(samples, bestSplit, setA, setB);
-          node->setSplit(bestSplit);
-
+          split(samples, best_split, setA, setB);
+          node->setSplit(best_split);
           i_node++;
 
           TreeNode<Sample> *left = new TreeNode<Sample>(depth + 1);
@@ -153,8 +152,8 @@ public:
           node->addRightChild(right);
 
           autoSave();
-          PRINT("  (c) " << int((i_node/m_num_nodes)*100) << "% : split(depth: " << depth << ", elements: "
-                << nElements << ") [setA: " << setA.size() << ", setB: " << setB.size() << "]");
+          PRINT("  (3) " << (i_node/m_num_nodes)*100 << "% : split(depth: " << depth <<
+                ", elements: " << nelements << ") [A: " << setA.size() << ", B: " << setB.size() << "]");
 
           grow(left, setA);
           grow(right, setB);
@@ -163,65 +162,14 @@ public:
         {
           PRINT("  No valid split found");
           node->createLeaf(samples, m_class_weights, i_leaf);
+          i_node += pow(2.0, m_fp.max_d-depth+1) - 1;
           i_leaf++;
-          i_node += (int) pow(2.0, int((m_fp.max_d - depth) + 1)) - 1;
-          PRINT("  (d) " << int((i_node/m_num_nodes)*100) << "% : make leaf(depth: " << depth
-                << ", elements: "  << samples.size() << ") [i_leaf: " << i_leaf << "]");
+          PRINT("  (4) " << (i_node/m_num_nodes)*100 << "% : make leaf(depth: " << depth <<
+                ", elements: "  << samples.size() << ") [i_leaf: " << i_leaf << "]");
         }
       }
     }
   };
-
-  bool
-  findOptimalSplit
-    (
-    const std::vector<Sample*>& data,
-    Split& best_split,
-    std::vector<Sample*>& set_a,
-    std::vector<Sample*>& set_b,
-    int depth
-    )
-  {
-    best_split.info = boost::numeric::bounds<double>::lowest();
-    best_split.gain = boost::numeric::bounds<double>::lowest();
-    best_split.oob = boost::numeric::bounds<double>::highest();
-    int num_splits = m_fp.nTests;
-
-    std::vector<Split> splits(num_splits);
-
-    double timeStamp = timer.elapsed();
-
-    boost::uniform_int<> dist_split(0, 100);
-    boost::variate_generator<boost::mt19937&, boost::uniform_int<> > rand_split(*m_rng, dist_split);
-    int split_mode = rand_split();
-    SplitGen<Sample> sg(data, splits, m_rng, m_fp, m_class_weights, depth, split_mode);
-    sg.generate();
-
-    std::cout << timer.elapsed() << ": for split: " << (timer.elapsed() - timeStamp) << " ("
-        << (timer.elapsed() - timeStamp) / float(data.size()) << ") mode: " << split_mode << std::endl;
-    for (unsigned i = 0; i < splits.size(); i++) {
-
-      if (splits[i].info > best_split.info) {
-        best_split = splits[i];
-      }
-    }
-    if (best_split.info != boost::numeric::bounds<double>::lowest())
-      return true;
-    return false;
-  };
-
-  void split(const std::vector<Sample*>& data, Split& best_split,
-      std::vector<Sample*>& set_a, std::vector<Sample*>& set_b) {
-    //generate Value for each Patch
-    std::vector<IntIndex> valSet(data.size());
-    for (unsigned int l = 0; l < data.size(); ++l) {
-      valSet[l].first = data[l]->evalTest(best_split);
-      valSet[l].second = l;
-    }
-    std::sort(valSet.begin(), valSet.end());
-
-    SplitGen<Sample>::splitVec(data, valSet, set_a, set_b, best_split.threshold, best_split.margin);
-  };*/
 
   //sends the sample down the tree and return a pointer to the leaf.
   /*static void evaluate(const Sample* sample, TreeNode<Sample>* node,
@@ -257,34 +205,6 @@ public:
     }
   };
 
-  /*void autoSave() {
-    int tStamp = timer.elapsed();
-    int saveInterval = 150000;
-    //save every 10 minutes
-    if ((tStamp - m_last_save_point) > saveInterval) {
-      m_last_save_point = timer.elapsed();
-      std::cout << timer.elapsed() << ": save at " << m_last_save_point << std::endl;
-      save(m_save_path);
-    }
-  };
-
-  //saves the tree recursive
-  //it can also save unfinished trees
-  void save(std::string path) {
-    try {
-      std::ofstream ofs(path.c_str());
-      boost::archive::binary_oarchive oa(ofs);
-      oa << *this;
-      ofs.flush();
-      ofs.close();
-      std::cout << "saved " << path << std::endl;
-    } catch (boost::archive::archive_exception& ex) {
-      std::cout << "Archive Exception during serializing:" << std::endl;
-      std::cout << ex.what() << std::endl;
-      std::cout << "it was tree: " << path << std::endl;
-    }
-  };*/
-
   static bool
   load
     (
@@ -296,7 +216,7 @@ public:
     std::ifstream ifs(path.c_str());
     if (!ifs.is_open())
     {
-      ERROR("  File not found: " << path);
+      PRINT("  File not found: " << path);
       return false;
     }
 
@@ -304,26 +224,128 @@ public:
     {
       boost::archive::binary_iarchive ia(ifs);
       ia >> *tree;
+      if ((*tree)->isFinished())
+      {
+        PRINT("  Complete tree reloaded");
+      }
+      else
+      {
+        PRINT("  Unfinished tree reloaded, keep growing ...");
+      }
       ifs.close();
       return true;
     }
     catch (boost::archive::archive_exception &ex)
     {
-      ERROR("  Exception during tree deserializing: " << ex.what());;
+      ERROR("  Exception during tree serialization: " << ex.what());
       ifs.close();
       return false;
     }
-    catch (int e)
+    catch (int ex)
     {
-      ERROR("  Exception: " << e);
+      ERROR("  Exception: " << ex);
       ifs.close();
       return false;
+    }
+  };
+
+  void
+  save
+    (
+    std::string path
+    )
+  {
+    try
+    {
+      std::ofstream ofs(path.c_str());
+      boost::archive::binary_oarchive oa(ofs);
+      oa << *this;  // it can also save unfinished trees
+      ofs.flush();
+      ofs.close();
+      PRINT("  Saved: " << path);
+    }
+    catch (boost::archive::archive_exception &ex)
+    {
+      ERROR("  Exception during tree serialization: " << ex.what());
     }
   };
 
   TreeNode<Sample> *root; // root node of the tree
 
 private:
+  // Called from "grow"
+  bool
+  findOptimalSplit
+    (
+    const std::vector<Sample*> &samples,
+    Split &best_split,
+    int depth
+    )
+  {
+    best_split.info = boost::numeric::bounds<double>::lowest();
+    best_split.gain = boost::numeric::bounds<double>::lowest();
+    best_split.oob  = boost::numeric::bounds<double>::highest();
+
+    int num_splits = m_fp.nTests; // 500 tests to find the best split
+    std::vector<Split> splits(num_splits);
+
+    float time_stamp = timer.elapsed();
+    boost::uniform_int<> dist_split(0, 100);
+    boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_split(*m_rng, dist_split);
+    int split_mode = rand_split();
+    SplitGen<Sample> sg(samples, splits, m_rng, m_fp, depth, split_mode);
+    sg.generate();
+    PRINT("  Optimal split mode: " << split_mode);
+    PRINT("  Time: " << timer.elapsed()-time_stamp << " ms (" << timer.elapsed() << " ms)");
+
+    // Select the splitting which maximizes the information gain
+    for (unsigned i=0; i < splits.size(); i++)
+      if (splits[i].info > best_split.info)
+        best_split = splits[i];
+
+    if (best_split.info != boost::numeric::bounds<double>::lowest())
+      return true;
+
+    return false;
+  };
+
+  // Called from "grow"
+  void
+  split
+    (
+    const std::vector<Sample*> &samples,
+    Split &best_split,
+    std::vector<Sample*> &set_a,
+    std::vector<Sample*> &set_b
+    )
+  {
+    // Generate value for each patch
+    std::vector<IntIndex> valSet(samples.size());
+    for (unsigned int l=0; l < samples.size(); ++l)
+    {
+      valSet[l].first = samples[l]->evalTest(best_split);
+      valSet[l].second = l;
+    }
+    std::sort(valSet.begin(), valSet.end());
+
+    SplitGen<Sample>::splitVec(samples, valSet, set_a, set_b, best_split.threshold, best_split.margin);
+  };
+
+  void
+  autoSave
+    ()
+  {
+    int time_stamp = timer.elapsed();
+    int save_interval = 150000;
+    // Save every 10 minutes
+    if ((time_stamp - m_last_save_point) > save_interval)
+    {
+      m_last_save_point = timer.elapsed();
+      PRINT(timer.elapsed() << " ms (autoSave at " << m_last_save_point << ")");
+      save(m_save_path);
+    }
+  };
+
   boost::mt19937 *m_rng;
   Timing timer;
   int m_last_save_point; // the latest saving timestamp

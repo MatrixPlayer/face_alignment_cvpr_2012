@@ -28,7 +28,7 @@ public:
     margin = 0;
   };
 
-  void
+  /*void
   generate
     (
     int patch_size,
@@ -46,7 +46,7 @@ public:
   {
     feature.print();
     PRINT(" " << threshold);
-  };
+  };*/
 
   Feature feature;
   double info;

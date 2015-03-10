@@ -11,6 +11,7 @@
 
 // ----------------------- INCLUDES --------------------------------------------
 #include <ThreadPool.hpp>
+#include <opencv2/core/core.hpp>
 #include <boost/thread.hpp>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/vector.hpp>
@@ -82,51 +83,66 @@ class SplitGen
 public:
   typedef typename Sample::Split Split;
 
+  // Called from "findOptimalSplit"
   SplitGen
     (
-    const std::vector<Sample*> &data_,
-    std::vector<Split>& splits_,
-    boost::mt19937* rng_,
-    ForestParam fp_,
-    std::vector<float>& weightClasses_,
-    int depth_,
-    float split_mode_
+    const std::vector<Sample*> &samples,
+    std::vector<Split> &splits,
+    boost::mt19937 *rng,
+    ForestParam fp,
+    int depth,
+    float split_mode
     ) :
-      data(data_), splits(splits_), rng(rng_), fp(fp_), weightClasses(weightClasses_),
-      depth(depth_), split_mode(split_mode_) {};
+      m_samples(samples), m_splits(splits), m_rng(rng), m_fp(fp),
+      m_depth(depth), m_split_mode(split_mode) {};
 
   virtual
-  ~SplitGen() {};
+  ~SplitGen
+    () {};
 
-  /*void generate_mt(int stripe) {
-    boost::mt19937 rng_thread(abs(stripe + 1) * std::time(NULL));
-
-    if (Sample::generateSplit(data, &rng_thread, fp, splits[stripe], split_mode, depth)) {
-      std::vector<IntIndex> valSet(data.size());
-      for (unsigned int l = 0; l < data.size(); ++l) {
-        valSet[l].first = data[l]->evalTest(splits[stripe]);
-        valSet[l].second = l;
-      }
-      std::sort(valSet.begin(), valSet.end());
-      findThreshold(data, valSet, splits[stripe], &rng_thread);
-      splits[stripe].oob = 0;
-    } else {
-      splits[stripe].threshold = 0;
-      splits[stripe].info = boost::numeric::bounds<double>::lowest();
-      splits[stripe].gain = boost::numeric::bounds<double>::lowest();
-      splits[stripe].oob = boost::numeric::bounds<double>::highest();
-    }
-  }
-
-  void generate() {
+  // Called from Tree "findOptimalSplit"
+  void
+  generate
+    ()
+  {
     int num_treads = boost::thread::hardware_concurrency();
     boost::thread_pool::ThreadPool e(num_treads);
-    for (int stripe = 0; stripe < static_cast<int>(splits.size()); stripe++) {
-      e.submit(boost::bind(&SplitGen::generate_mt, this, stripe));
-    }
+    for (int stripe=0; stripe < static_cast<int>(m_splits.size()); stripe++)
+      e.submit(boost::bind(&SplitGen::generateMT, this, stripe));
     e.join_all();
   };
 
+  void
+  generateMT
+    (
+    int stripe
+    )
+  {
+    // Randomly estimate the best pair of sub-patches
+    boost::mt19937 rng(abs(stripe+1) * std::time(NULL));
+    if (Sample::generateSplit(m_samples, &rng, m_fp, m_splits[stripe]))
+    {
+      // Process each patch with the selected R1 and R2
+      std::vector<IntIndex> val_set(m_samples.size());
+      for (unsigned int i=0; i < m_samples.size(); ++i)
+      {
+        val_set[i].first  = m_samples[i]->evalTest(m_splits[stripe]);
+        val_set[i].second = i;
+      }
+      std::sort(val_set.begin(), val_set.end()); // sort by f_theta
+      findThreshold(m_samples, val_set, m_splits[stripe], &rng);
+      m_splits[stripe].oob = 0;
+    }
+    else
+    {
+      m_splits[stripe].threshold = 0;
+      m_splits[stripe].info = boost::numeric::bounds<double>::lowest();
+      m_splits[stripe].gain = boost::numeric::bounds<double>::lowest();
+      m_splits[stripe].oob  = boost::numeric::bounds<double>::highest();
+    }
+  };
+
+  // Called from Tree "split"
   static void splitVec(const std::vector<Sample*>& data,
       const std::vector<IntIndex>& valSet, std::vector<Sample*>& setA,
       std::vector<Sample*>& setB, int threshold, int margin = 0) {
@@ -155,129 +171,144 @@ public:
 
   };
 
-  static void splitVec(const std::vector<Sample*>& data,
-      const std::vector<IntIndex>& valSet,
-      std::vector<std::vector<Sample*> >& sets,
-      int threshold, int margin) {
-
-    // search largest value such that val<t
-    std::vector<IntIndex>::const_iterator it_first, it_second;
-
-    it_first = lower_bound(valSet.begin(), valSet.end(), threshold - margin, less_than());
-    if (margin == 0)
-      it_second = it_first;
-    else
-      it_second = lower_bound(valSet.begin(), valSet.end(), threshold + margin, less_than());
-
-    if (it_first == it_second) // no intersection between the two thresholds
-        {
-      std::vector<IntIndex>::const_iterator it = it_first;
-
-      sets.resize(2);
-      // Split training data into two sets A,B accroding to threshold t
-      sets[0].resize(it - valSet.begin());
-      sets[1].resize(data.size() - sets[0].size());
-
-      it = valSet.begin();
-      typename std::vector<Sample*>::iterator itSample;
-      for (itSample = sets[0].begin(); itSample < sets[0].end(); ++itSample, ++it)
-        (*itSample) = data[it->second];
-
-      it = valSet.begin() + sets[0].size();
-      for (itSample = sets[1].begin(); itSample < sets[1].end(); ++itSample, ++it)
-        (*itSample) = data[it->second];
-
-      assert( (sets[0].size() + sets[1].size()) == data.size());
-
-    } else {
-
-      sets.resize(3);
-      // Split training data into two sets A,B accroding to threshold t
-      sets[0].resize(it_first - valSet.begin());
-      sets[1].resize(it_second - it_first);
-      sets[2].resize(valSet.end() - it_second);
-
-      std::vector<IntIndex>::const_iterator it = valSet.begin();
-      typename std::vector<Sample*>::iterator itSample;
-      for (itSample = sets[0].begin(); itSample < sets[0].end(); ++itSample, ++it)
-        (*itSample) = data[it->second];
-
-      it = valSet.begin() + sets[0].size();
-      for (itSample = sets[1].begin(); itSample < sets[1].end(); ++itSample, ++it)
-        (*itSample) = data[it->second];
-
-      it = valSet.begin() + sets[0].size() + sets[1].size();
-
-      for (itSample = sets[2].begin(); itSample < sets[2].end(); ++itSample, ++it)
-        (*itSample) = data[it->second];
-
-      assert( (sets[0].size() + sets[1].size() + sets[2].size()) == data.size());
-
-    }
-  };*/
-
 private:
-  /*void findThreshold(const std::vector<Sample*>& data,
-      const std::vector<IntIndex>& valSet,
-      Split& split, boost::mt19937* rng_) const {
-    split.gain = boost::numeric::bounds<double>::lowest();
+  // Called from "generate_mt"
+  void
+  findThreshold
+    (
+    const std::vector<Sample*> &samples,
+    const std::vector<IntIndex> &val_set,
+    Split &split,
+    boost::mt19937 *rng
+    ) const
+  {
     split.info = boost::numeric::bounds<double>::lowest();
+    split.gain = boost::numeric::bounds<double>::lowest();
 
-    int min_Val = valSet.front().first;
-    int max_val = valSet.back().first;
-    int valueRange = max_val - min_Val;
+    int min_val = val_set.front().first;
+    int max_val = val_set.back().first;
+    int range   = max_val - min_val;
 
-    if (valueRange > 0) {
-//            double info = Sample::entropie( data, weightClasses, split_mode);
-
-      int nThreshlds = split.num_thresholds;
+    if (range > 0)
+    {
+      // Find best threshold
+      int nthresholds = split.num_thresholds; // 25
       bool use_margin = false;
       if (use_margin)
-        nThreshlds = 20;
+        nthresholds = 20;
 
-      // Find best threshold
-      boost::uniform_int<> dist_tr(0, valueRange);
-      boost::variate_generator<boost::mt19937&, boost::uniform_int<> > rand_tr(*rng_, dist_tr);
+      boost::uniform_int<> dist_thr(0, range);
+      boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_thr(*rng, dist_thr);
 
-      int m = std::min(abs(min_Val), abs(max_val));
-      if (m <= 0)
-        m = 1;
-      boost::uniform_int<> dist_margin(0, m);
-      boost::variate_generator<boost::mt19937&, boost::uniform_int<> > rand_margin(*rng, dist_margin);
-      for (int j = 0; j < nThreshlds; ++j) {
+      // Only if use_margin == true
+      int m = std::min(abs(min_val), abs(max_val));
+      m = (m > 0) ? m : 1;
+      boost::uniform_int<> dist_mar(0, m);
+      boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_mar(*m_rng, dist_mar);
+
+      for (int i=0; i < nthresholds; ++i)
+      {
         // Generate some random thresholds
-        int tr = rand_tr() + min_Val;
+        int thresh = rand_thr() + min_val;
         int margin = 0;
 
-        std::vector<std::vector<Sample*> > sets;
         if (use_margin)
-          margin = rand_margin();
+          margin = rand_mar();
 
-        splitVec(data, valSet, sets, tr, margin);
+        std::vector< std::vector<Sample*> > sets;
+        splitSamples(samples, val_set, sets, thresh, margin);
 
-        unsigned int min = 2;
-        if (sets[0].size() < min or sets[1].size() < min)
+        // Each set must have more than 1 sample
+        unsigned int min_set_size = 2;
+        if (sets[0].size() < min_set_size || sets[1].size() < min_set_size)
           continue;
 
-        double infoNew = Sample::evalSplit(sets[0], sets[1], weightClasses, split_mode, depth);
+        // Evaluate split using information gain IG
+        double info = Sample::evalSplit(sets[0], sets[1], m_split_mode, m_depth);
 
-        if (infoNew > split.info) {
-          split.threshold = tr;
-          split.info = infoNew;
-          split.gain = infoNew;
+        if (info > split.info)
+        {
+          split.threshold = thresh;
+          split.info = info;
+          split.gain = info;
           split.margin = margin;
         }
       }
     }
-  };*/
+  };
 
-  const std::vector<Sample*> &data;
-  std::vector<Split> &splits;
-  boost::mt19937 *rng;
-  ForestParam fp;
-  const std::vector<float> &weightClasses;
-  float depth;
-  float split_mode;
+  // Called from "findThreshold"
+  static void
+  splitSamples
+    (
+    const std::vector<Sample*> &samples,
+    const std::vector<IntIndex> &val_set,
+    std::vector< std::vector<Sample*> > &sets,
+    int thresh,
+    int margin
+    )
+  {
+    // Search largest value such that value < t
+    std::vector<IntIndex>::const_iterator it_first, it_second;
+    it_first = lower_bound(val_set.begin(), val_set.end(), thresh-margin, less_than());
+    if (margin == 0)
+      it_second = it_first;
+    else
+      it_second = lower_bound(val_set.begin(), val_set.end(), thresh+margin, less_than());
+
+    // Split training samples into two different sets A, B according to threshold t
+    if (it_first == it_second)
+    {
+      // No intersection between the two thresholds
+      sets.resize(2);
+      sets[0].resize(it_first - val_set.begin());
+      sets[1].resize(samples.size() - sets[0].size());
+
+      std::vector<IntIndex>::const_iterator it;
+      typename std::vector<Sample*>::iterator it_sample;
+
+      it = val_set.begin();
+      for (it_sample = sets[0].begin(); it_sample < sets[0].end(); ++it_sample, ++it)
+        (*it_sample) = samples[it->second];
+
+      it = val_set.begin() + sets[0].size();
+      for (it_sample = sets[1].begin(); it_sample < sets[1].end(); ++it_sample, ++it)
+        (*it_sample) = samples[it->second];
+
+      CV_Assert((sets[0].size() + sets[1].size()) == samples.size());
+    }
+    else
+    {
+      sets.resize(3);
+      sets[0].resize(it_first - val_set.begin());
+      sets[1].resize(it_second - it_first);
+      sets[2].resize(val_set.end() - it_second);
+
+      std::vector<IntIndex>::const_iterator it;
+      typename std::vector<Sample*>::iterator it_sample;
+
+      it = val_set.begin();
+      for (it_sample = sets[0].begin(); it_sample < sets[0].end(); ++it_sample, ++it)
+        (*it_sample) = samples[it->second];
+
+      it = val_set.begin() + sets[0].size();
+      for (it_sample = sets[1].begin(); it_sample < sets[1].end(); ++it_sample, ++it)
+        (*it_sample) = samples[it->second];
+
+      it = val_set.begin() + sets[0].size() + sets[1].size();
+      for (it_sample = sets[2].begin(); it_sample < sets[2].end(); ++it_sample, ++it)
+        (*it_sample) = samples[it->second];
+
+      CV_Assert((sets[0].size() + sets[1].size() + sets[2].size()) == samples.size());
+    }
+  };
+
+  const std::vector<Sample*> &m_samples;
+  std::vector<Split> &m_splits;
+  boost::mt19937 *m_rng;
+  ForestParam m_fp;
+  float m_depth;
+  float m_split_mode;
 };
 
 #endif /* SPLIT_GEN_HPP */

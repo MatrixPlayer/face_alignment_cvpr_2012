@@ -43,18 +43,15 @@ HeadPoseSample::eval
 bool
 HeadPoseSample::generateSplit
   (
-  const std::vector<HeadPoseSample*> &data,
+  const std::vector<HeadPoseSample*> &samples,
   boost::mt19937 *rng,
   ForestParam fp,
-  Split &split,
-  float split_mode,
-  int depth
+  Split &split
   )
 {
-  int patchSize = fp.faceSize * fp.patchSizeRatio;
-  int num_feat_channels = data[0]->image->m_feature_channels.size();
-  split.feature.generate(patchSize, rng, num_feat_channels);
-
+  int patch_size = static_cast<int>(floor(fp.faceSize * fp.patchSizeRatio)); // 125 * 0.25 = 31.25
+  int num_feature_channels = samples[0]->image->m_feature_channels.size();
+  split.feature.generate(patch_size, rng, num_feature_channels);
   split.num_thresholds = 25;
   split.margin = 0;
 
@@ -66,12 +63,11 @@ HeadPoseSample::evalSplit
   (
   const std::vector<HeadPoseSample*> &setA,
   const std::vector<HeadPoseSample*> &setB,
-  const std::vector<float> &poppClasses,
-  float splitMode,
+  float split_mode,
   int depth
   )
 {
-  if (splitMode < 50)
+  if (split_mode < 50)
   {
     double ent_a = entropie(setA);
     double ent_b = entropie(setB);
@@ -85,131 +81,6 @@ HeadPoseSample::evalSplit
     double ent_b = gain2(setB, &size_b);
     return (ent_a * size_a + ent_b * size_b) / static_cast<double>(size_b + size_a);
   }
-};
-
-double
-HeadPoseSample::gain
-  (
-  const std::vector<HeadPoseSample*> &set,
-  int* num_pos_elements
-  )
-{
-  int size = 0;
-  std::vector<HeadPoseSample*>::const_iterator itSample;
-
-  // Fill points for variance calculation
-  float mean_pos = 0;
-  for (itSample = set.begin(); itSample < set.end(); ++itSample)
-  {
-    if ((*itSample)->isPos)
-    {
-      size++;
-      mean_pos += (*itSample)->label;
-    }
-  }
-  mean_pos /= size;
-  *num_pos_elements = size;
-
-  if (size > 0)
-  {
-    float var = 0;
-    for (itSample = set.begin(); itSample < set.end(); ++itSample)
-    {
-      if ((*itSample)->isPos)
-      {
-        var += (mean_pos - (*itSample)->label) * (mean_pos - (*itSample)->label);
-      }
-    }
-    var /= size;
-    return -var;
-  }
-  else
-  {
-    return boost::numeric::bounds<double>::lowest();
-  }
-};
-
-double
-HeadPoseSample::gain2
-  (
-  const std::vector<HeadPoseSample*> &set,
-  int *num_pos_elements
-  )
-{
-  int n = 0;
-  int sum = 0;
-  int sq_sum = 0;
-
-  std::vector<HeadPoseSample*>::const_iterator itSample;
-  for (itSample = set.begin(); itSample < set.end(); ++itSample)
-  {
-    if ((*itSample)->isPos)
-    {
-      n++;
-      int l = (*itSample)->label;
-      sum += l;
-      sq_sum += l * l;
-    }
-  }
-  *num_pos_elements = n;
-
-  double mean = static_cast<float>(sum) / n;
-  double variance = static_cast<float>(sq_sum) / n - mean * mean;
-  return -variance;
-};
-
-double
-HeadPoseSample::entropie_pose
-  (
-  const std::vector<HeadPoseSample*> &set
-  )
-{
-  double n_entropy = 0;
-  for (int i=0; i < 5; i++)
-  {
-    std::vector<HeadPoseSample*>::const_iterator itSample;
-    int size = 0;
-    int p = 0;
-    for (itSample = set.begin(); itSample < set.end(); ++itSample)
-    {
-      if ((*itSample)->isPos)
-      {
-        size += 1;
-        if ((*itSample)->label == i)
-        {
-          p += 1;
-        }
-      }
-    }
-    double p_pos = float(p) / size;
-    if (p_pos > 0)
-      n_entropy += p_pos * log(p_pos);
-  }
-  return n_entropy;
-};
-
-double
-HeadPoseSample::entropie
-  (
-  const std::vector<HeadPoseSample*> &set
-  )
-{
-  double n_entropy = 0;
-  std::vector<HeadPoseSample*>::const_iterator itSample;
-  int p = 0;
-  for (itSample = set.begin(); itSample < set.end(); ++itSample)
-    if ((*itSample)->isPos)
-      p += 1;
-
-  double p_pos = float(p) / set.size();
-  if (p_pos > 0)
-    n_entropy += p_pos * log(p_pos);
-
-  double p_neg = float(set.size() - p) / set.size();
-  if (p_neg > 0)
-    n_entropy += p_neg * log(p_neg);
-
-  return n_entropy;
 };
 
 void
@@ -261,25 +132,150 @@ HeadPoseSample::makeLeaf
 void
 HeadPoseSample::calcWeightClasses
   (
-  std::vector<float> &poppClasses,
+  std::vector<float> &class_weights,
+  const std::vector<HeadPoseSample*> &samples
+  )
+{
+  class_weights.resize(5, 0);
+  int size = 0;
+  std::vector<HeadPoseSample*>::const_iterator it;
+  for (it = samples.begin(); it < samples.end(); ++it)
+  {
+    if ((*it)->isPos)
+    {
+      size++;
+      class_weights[(*it)->label]++;
+    }
+  }
+  for (unsigned int i=0; i < class_weights.size(); i++)
+    class_weights[i] /= size;
+
+  PRINT("Classes weights: " << cv::Mat(class_weights).t());
+};
+
+double
+HeadPoseSample::entropie
+  (
   const std::vector<HeadPoseSample*> &set
   )
 {
-  poppClasses.resize(5, 0);
+  // Count number of foreground patches
+  double p = 0;
+  std::vector<HeadPoseSample*>::const_iterator it_sample;
+  for (it_sample = set.begin(); it_sample < set.end(); ++it_sample)
+    if ((*it_sample)->isPos)
+      p += 1;
+
+  double n_entropy = 0;
+  // Probability to classify as foreground patch (positive)
+  double p_pos = p/static_cast<double>(set.size());
+  if (p_pos > 0)
+    n_entropy += p_pos * log(p_pos);
+  // Probability to classify as background patch (negative)
+  double p_neg = (set.size()-p)/static_cast<double>(set.size());
+  if (p_neg > 0)
+    n_entropy += p_neg * log(p_neg);
+
+  return n_entropy;
+};
+
+/*double
+HeadPoseSample::entropie_pose
+  (
+  const std::vector<HeadPoseSample*> &set
+  )
+{
+  double n_entropy = 0;
+  for (int i=0; i < 5; i++)
+  {
+    std::vector<HeadPoseSample*>::const_iterator itSample;
+    int size = 0;
+    int p = 0;
+    for (itSample = set.begin(); itSample < set.end(); ++itSample)
+    {
+      if ((*itSample)->isPos)
+      {
+        size += 1;
+        if ((*itSample)->label == i)
+        {
+          p += 1;
+        }
+      }
+    }
+    double p_pos = float(p) / size;
+    if (p_pos > 0)
+      n_entropy += p_pos * log(p_pos);
+  }
+  return n_entropy;
+};*/
+
+/*double
+HeadPoseSample::gain
+  (
+  const std::vector<HeadPoseSample*> &set,
+  int *num_pos_elements
+  )
+{
   int size = 0;
   std::vector<HeadPoseSample*>::const_iterator itSample;
+
+  // Fill points for variance calculation
+  float mean_pos = 0;
   for (itSample = set.begin(); itSample < set.end(); ++itSample)
   {
     if ((*itSample)->isPos)
     {
       size++;
-      poppClasses[(*itSample)->label]++;
+      mean_pos += (*itSample)->label;
     }
   }
-  PRINT("Class Histogram: ");
-  for (unsigned int i = 0; i < poppClasses.size(); i++)
+  mean_pos /= size;
+  *num_pos_elements = size;
+
+  if (size > 0)
   {
-    PRINT(i << " -> " << poppClasses[i] << " " << poppClasses[i] / size);
-    poppClasses[i] /= size;
+    float var = 0;
+    for (itSample = set.begin(); itSample < set.end(); ++itSample)
+    {
+      if ((*itSample)->isPos)
+      {
+        var += (mean_pos - (*itSample)->label) * (mean_pos - (*itSample)->label);
+      }
+    }
+    var /= size;
+    return -var;
   }
+  else
+  {
+    return boost::numeric::bounds<double>::lowest();
+  }
+};*/
+
+double
+HeadPoseSample::gain2
+  (
+  const std::vector<HeadPoseSample*> &set,
+  int *num_pos_elements
+  )
+{
+  double n = 0;
+  double sum = 0;
+  double sq_sum = 0;
+
+  std::vector<HeadPoseSample*>::const_iterator it_sample;
+  for (it_sample = set.begin(); it_sample < set.end(); ++it_sample)
+  {
+    if ((*it_sample)->isPos)
+    {
+      n++;
+      int l = (*it_sample)->label; // pose = [0, 1, 2, 3, 4]
+      sum += l;
+      sq_sum += l * l;
+    }
+  }
+  *num_pos_elements = n;
+
+  double mean = sum / n;
+  double variance = (sq_sum / n) - (mean * mean);
+  return -variance;
 };

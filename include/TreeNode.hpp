@@ -42,12 +42,13 @@ public:
       delete right;
   };
 
-  /*int
+  // Called from "grow"
+  int
   getDepth
     ()
   {
     return depth;
-  };*/
+  };
 
   bool
   isLeaf
@@ -71,8 +72,9 @@ public:
   {
     is_leaf = true;
     leaf = l;
-  };
+  };*/
 
+  // Called from "grow"
   void
   createLeaf
     (
@@ -86,7 +88,7 @@ public:
     has_split = false;
   };
 
-  void
+  /*void
   collectLeafs
     (
     std::vector<Leaf*> &leafs
@@ -100,8 +102,9 @@ public:
       leaf.depth = depth;
       leafs.push_back(&leaf);
     }
-  };
+  };*/
 
+  // Called from "grow"
   bool
   hasSplit
     () const
@@ -109,6 +112,7 @@ public:
     return has_split;
   };
 
+  // Called from "grow"
   Split
   getSplit
     ()
@@ -116,6 +120,7 @@ public:
     return split;
   };
 
+  // Called from "grow"
   void
   setSplit
     (
@@ -127,6 +132,7 @@ public:
     split = s;
   }
 
+  // Called from "grow"
   void
   addLeftChild
     (
@@ -136,6 +142,7 @@ public:
     left = left_child;
   };
 
+  // Called from "grow"
   void
   addRightChild
     (
@@ -143,7 +150,7 @@ public:
     )
   {
     right = right_child;
-  };*/
+  };
 
   bool
   eval
@@ -154,13 +161,13 @@ public:
     return s->eval(split);
   };
 
-  int depth;
   Leaf leaf;
   Split split;
   TreeNode<Sample> *right;
   TreeNode<Sample> *left;
 
 private:
+  int depth;
   bool is_leaf;
   bool has_split;
 

@@ -62,6 +62,7 @@ public:
   show
     ();
 
+  // Used from SplitGen "generateMT"
   int
   evalTest
     (
@@ -74,24 +75,23 @@ public:
     const Split &test
     ) const;
 
+  // Called from SplitGen "generateMT"
   static bool
   generateSplit
     (
-    const std::vector<HeadPoseSample*> &data,
+    const std::vector<HeadPoseSample*> &samples,
     boost::mt19937 *rng,
     ForestParam fp,
-    Split &split,
-    float split_mode,
-    int depth
+    Split &split
     );
 
+  // Called from SplitGen "findThreshold"
   static double
   evalSplit
     (
     const std::vector<HeadPoseSample*> &setA,
     const std::vector<HeadPoseSample*> &setB,
-    const std::vector<float> &poppClasses,
-    float splitMode,
+    float split_mode,
     int depth
     );
 
@@ -104,37 +104,12 @@ public:
     int leaf_id = 0
     );
 
+  // Called from "Tree" initialization
   static void
   calcWeightClasses
     (
-    std::vector<float> &poppClasses,
-    const std::vector<HeadPoseSample*> &set
-    );
-
-  static double
-  entropie
-    (
-    const std::vector<HeadPoseSample*> &set
-    );
-
-  static double
-  gain
-    (
-    const std::vector<HeadPoseSample*> &set,
-    int *num_pos_elements
-    );
-
-  static double
-  gain2
-    (
-    const std::vector<HeadPoseSample*> &set,
-    int*num_pos_elements
-    );
-
-  static double
-  entropie_pose
-    (
-    const std::vector<HeadPoseSample*> &set
+    std::vector<float> &class_weights,
+    const std::vector<HeadPoseSample*> &samples
     );
 
   const ImageSample *image;
@@ -142,6 +117,33 @@ public:
   cv::Rect roi;
   cv::Rect rect;
   int label;
+
+private:
+  static double
+  entropie
+    (
+    const std::vector<HeadPoseSample*> &set
+    );
+
+  /*static double
+  entropie_pose
+    (
+    const std::vector<HeadPoseSample*> &set
+    );*/
+
+  /*static double
+  gain
+    (
+    const std::vector<HeadPoseSample*> &set,
+    int *num_pos_elements
+    );*/
+
+  static double
+  gain2
+    (
+    const std::vector<HeadPoseSample*> &set,
+    int *num_pos_elements
+    );
 };
 
 /** ****************************************************************************

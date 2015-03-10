@@ -25,9 +25,9 @@ struct SimplePatchFeature
   print
     ()
   {
-    PRINT("FC: " << featureChannel);
-    PRINT("Rect A " << rectA.x << ", " << rectA.y << ", " << rectA.width << " " << rectA.height);
-    PRINT("Rect B " << rectB.x << ", " << rectB.y << ", " << rectB.width << " " << rectB.height);
+    PRINT("feature_channel: " << feature_channel);
+    PRINT("rect1: " << rect1);
+    PRINT("rect2: " << rect2);
   };
 
   void
@@ -36,59 +36,57 @@ struct SimplePatchFeature
     int patch_size,
     boost::mt19937 *rng,
     int num_feature_channels = 0,
-    float max_sub_patch_ratio = 1.0
+    float max_subpatch_ratio = 1.0
     )
   {
+    // Selected appearance channel randomly
     if (num_feature_channels > 1)
     {
       boost::uniform_int<> dist_feat(0, num_feature_channels - 1);
-      boost::variate_generator<boost::mt19937&, boost::uniform_int<> > rand_feat(*rng, dist_feat);
-      featureChannel = rand_feat();
+      boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_feat(*rng, dist_feat);
+      feature_channel = rand_feat();
     }
     else
-      featureChannel = 0;
+      feature_channel = 0;
 
-    int size = static_cast<int>(patch_size * max_sub_patch_ratio);
-
-    boost::uniform_int<> dist_size(1, (size - 1) * 0.75);
+    // R1 and R2 describe two rectangles within the patch boundaries
+    int subpatch_size = static_cast<int>(patch_size * max_subpatch_ratio); // 31 x 1
+    boost::uniform_int<> dist_size(1, (subpatch_size-1) * 0.75);
     boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_size(*rng, dist_size);
-    rectA.width = rand_size();
-    rectA.height = rand_size();
-    rectB.width = rand_size();
-    rectB.height = rand_size();
+    rect1.width  = rand_size();
+    rect1.height = rand_size();
+    rect2.width  = rand_size();
+    rect2.height = rand_size();
 
-    boost::uniform_int<> dist_x(0, size - rectA.width - 1);
-    boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_x(*rng, dist_x);
-    rectA.x = rand_x();
-
-    boost::uniform_int<> dist_y(0, size - rectA.height - 1);
-    boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_y(*rng, dist_y);
-    rectA.y = rand_y();
-
-    boost::uniform_int<> dist_x_b(0, size - rectB.width - 1);
+    boost::uniform_int<> dist_x_a(0, subpatch_size-rect1.width-1);
+    boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_x_a(*rng, dist_x_a);
+    rect1.x = rand_x_a();
+    boost::uniform_int<> dist_y_a(0, subpatch_size-rect1.height-1);
+    boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_y_a(*rng, dist_y_a);
+    rect1.y = rand_y_a();
+    boost::uniform_int<> dist_x_b(0, subpatch_size-rect2.width-1);
     boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_x_b(*rng, dist_x_b);
-    rectB.x = rand_x_b();
-
-    boost::uniform_int<> dist_y_b(0, size - rectB.height - 1);
+    rect2.x = rand_x_b();
+    boost::uniform_int<> dist_y_b(0, subpatch_size-rect2.height-1);
     boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_y_b(*rng, dist_y_b);
-    rectB.y = rand_y_b();
+    rect2.y = rand_y_b();
 
-    CV_Assert(rectA.x >= 0 and rectB.x>=0 and rectA.y >= 0 and rectB.y>=0);
-    CV_Assert(rectA.x+rectA.width < patch_size and rectA.y+rectA.height < patch_size);
-    CV_Assert(rectB.x+rectB.width < patch_size and rectB.y+rectB.height < patch_size);
+    CV_Assert(rect1.x >= 0 && rect2.x >= 0 && rect1.y >= 0 && rect2.y >= 0);
+    CV_Assert(rect1.x+rect1.width < patch_size && rect1.y+rect1.height < patch_size);
+    CV_Assert(rect2.x+rect2.width < patch_size && rect2.y+rect2.height < patch_size);
   };
 
-  int featureChannel;
-  cv::Rect_<int> rectA;
-  cv::Rect_<int> rectB;
+  int feature_channel;
+  cv::Rect_<int> rect1;
+  cv::Rect_<int> rect2;
 
   friend class boost::serialization::access;
   template<class Archive>
   void serialize(Archive &ar, const unsigned int version)
   {
-    ar & featureChannel;
-    ar & rectA;
-    ar & rectB;
+    ar & feature_channel;
+    ar & rect1;
+    ar & rect2;
   }
 };
 
@@ -173,6 +171,7 @@ public:
   ~ImageSample
     ();
 
+  // Used from HeadPoseSample and MPSample "evalTest"
   int
   evalTest
     (
