@@ -13,11 +13,11 @@
 void
 HeadPoseSample::show()
 {
-  cv::imshow("Head-pose X", image->m_feature_channels[0](rect));
-  cv::Mat face = image->m_feature_channels[0].clone();
-  cv::rectangle(face, rect, cv::Scalar(255, 255, 255, 0));
-  if (label >= 0)
-    cv::rectangle(face, roi, cv::Scalar(255, 255, 255, 0));
+  cv::imshow("Head-pose X", m_image->m_feature_channels[0](m_patch_bbox));
+  cv::Mat face = m_image->m_feature_channels[0].clone();
+  cv::rectangle(face, m_patch_bbox, cv::Scalar(255, 255, 255, 0));
+  if (m_label >= 0)
+    cv::rectangle(face, m_face_bbox, cv::Scalar(255, 255, 255, 0));
   cv::imshow("Head-pose Y", face);
   cv::waitKey(0);
 };
@@ -28,7 +28,7 @@ HeadPoseSample::evalTest
   const Split &test
   ) const
 {
-  return image->evalTest(test.feature, rect);
+  return m_image->evalTest(test.feature, m_patch_bbox);
 };
 
 bool
@@ -49,8 +49,8 @@ HeadPoseSample::generateSplit
   Split &split
   )
 {
-  int patch_size = static_cast<int>(floor(fp.faceSize * fp.patchSizeRatio)); // 125 * 0.25 = 31.25
-  int num_feature_channels = samples[0]->image->m_feature_channels.size();
+  int patch_size = static_cast<int>(floor(fp.face_size * fp.patch_size_ratio)); // 125 * 0.25 = 31.25
+  int num_feature_channels = samples[0]->m_image->m_feature_channels.size();
   split.feature.generate(patch_size, rng, num_feature_channels);
   split.num_thresholds = 25;
   split.margin = 0;
@@ -92,40 +92,30 @@ HeadPoseSample::makeLeaf
   int leaf_id
   )
 {
-  std::vector<HeadPoseSample*>::const_iterator itSample;
+  // Count number of foreground samples
   int size = 0;
-  for (itSample = set.begin(); itSample < set.end(); ++itSample)
-  {
-    if ((*itSample)->isPos)
-    {
+  std::vector<HeadPoseSample*>::const_iterator it_sample;
+  for (it_sample = set.begin(); it_sample < set.end(); ++it_sample)
+    if ((*it_sample)->m_is_positive)
       size++;
-    }
-  }
+
   leaf.forgound = size / static_cast<float>(set.size());
   leaf.nSamples = set.size();
-
   leaf.hist_labels.clear();
   leaf.hist_labels.resize(5, 0);
   if (size > 0)
   {
-    for (itSample = set.begin(); itSample < set.end(); ++itSample)
-    {
-      if ((*itSample)->isPos)
-        leaf.hist_labels[(*itSample)->label]++;
-    }
-    for (unsigned int i = 0; i < leaf.hist_labels.size(); i++)
-    {
-      std::cout << leaf.hist_labels[i] << ", ";
-    }
-    std::cout << std::endl;
+    for (it_sample = set.begin(); it_sample < set.end(); ++it_sample)
+      if ((*it_sample)->m_is_positive)
+        leaf.hist_labels[(*it_sample)->m_label]++;
+
+    PRINT("  Histogram: " << cv::Mat(leaf.hist_labels).t());
   }
   else
   {
-    PRINT("leaf with only neg images. " << set.size());
-    for (unsigned int i = 0; i < leaf.hist_labels.size(); i++)
-    {
+    PRINT("  Leaf with only background patches: " << set.size());
+    for (unsigned int i=0; i < leaf.hist_labels.size(); i++)
       leaf.hist_labels[i] = 0;
-    }
   }
 };
 
@@ -141,10 +131,10 @@ HeadPoseSample::calcWeightClasses
   std::vector<HeadPoseSample*>::const_iterator it;
   for (it = samples.begin(); it < samples.end(); ++it)
   {
-    if ((*it)->isPos)
+    if ((*it)->m_is_positive)
     {
       size++;
-      class_weights[(*it)->label]++;
+      class_weights[(*it)->m_label]++;
     }
   }
   for (unsigned int i=0; i < class_weights.size(); i++)
@@ -163,7 +153,7 @@ HeadPoseSample::entropie
   double p = 0;
   std::vector<HeadPoseSample*>::const_iterator it_sample;
   for (it_sample = set.begin(); it_sample < set.end(); ++it_sample)
-    if ((*it_sample)->isPos)
+    if ((*it_sample)->m_is_positive)
       p += 1;
 
   double n_entropy = 0;
@@ -265,10 +255,10 @@ HeadPoseSample::gain2
   std::vector<HeadPoseSample*>::const_iterator it_sample;
   for (it_sample = set.begin(); it_sample < set.end(); ++it_sample)
   {
-    if ((*it_sample)->isPos)
+    if ((*it_sample)->m_is_positive)
     {
       n++;
-      int l = (*it_sample)->label; // pose = [0, 1, 2, 3, 4]
+      int l = (*it_sample)->m_label; // pose = [0, 1, 2, 3, 4]
       sum += l;
       sq_sum += l * l;
     }

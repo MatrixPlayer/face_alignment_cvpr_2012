@@ -93,10 +93,10 @@ public:
   {
     m_forest_param = fp;
     if (max_trees == -1)
-      max_trees = fp.nTrees;
-    PRINT("> Trees to load: " << fp.nTrees);
+      max_trees = fp.ntrees;
+    PRINT("> Trees to load: " << fp.ntrees);
 
-    for (int i=0; i < fp.nTrees; i++)
+    for (int i=0; i < fp.ntrees; i++)
     {
       if (static_cast<int>(m_trees.size()) > max_trees)
         continue;

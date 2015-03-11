@@ -17,12 +17,15 @@
 #include <MPSample.hpp>
 #include <FaceForest.hpp>
 
+/** ****************************************************************************
+ * @brief Parse annotations file
+ ******************************************************************************/
 struct FaceAnnotation
 {
     std::vector<cv::Point> parts; // number of facial feature points
-    std::string url; // url to original image
-    cv::Rect bbox; // bounding box
-    int pose; // head pose
+    std::string url;              // path to original image
+    cv::Rect bbox;                // bounding box
+    int pose;                     // head pose
 };
 
 struct Vote

@@ -11,6 +11,7 @@
 
 // ----------------------- INCLUDES --------------------------------------------
 #include <trace.hpp>
+#include <Constants.hpp>
 #include <Timing.hpp>
 #include <TreeNode.hpp>
 #include <SplitGen.hpp>
@@ -22,8 +23,8 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int.hpp>
 #include <boost/random/variate_generator.hpp>
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 
 /** ****************************************************************************
  * @class Tree
@@ -56,16 +57,17 @@ public:
     timer = Timing();
     m_last_save_point = 0;
     m_fp = fp;
-    m_num_nodes = pow(2.0, m_fp.max_d+1) - 1;
+    m_num_nodes = pow(2.0, m_fp.max_depth+1) - 1;
     i_node = 0;
     i_leaf = 0;
     m_save_path = save_path;
     Sample::calcWeightClasses(m_class_weights, samples);
     root = new TreeNode<Sample>(0);
 
-    PRINT("(+) Start Training");
+    PRINT("Start training");
     grow(root, samples);
-    //save(m_save_path);
+    PRINT("Save tree: " << m_save_path);
+    save(m_save_path);
   };
 
   virtual
@@ -114,34 +116,35 @@ public:
   {
     int depth = node->getDepth();
     int nelements = static_cast<int>(samples.size());
-    if (nelements < m_fp.min_s || depth >= m_fp.max_d || node->isLeaf())
+    if (nelements < m_fp.min_patches || depth >= m_fp.max_depth || node->isLeaf())
     {
       node->createLeaf(samples, m_class_weights, i_leaf);
-      i_node += pow(2.0, m_fp.max_d-depth+1) - 1;
+      i_node += pow(2.0, m_fp.max_depth-depth+1) - 1;
       i_leaf++;
       PRINT("  (1) " << (i_node/m_num_nodes)*100 << "% : make leaf(depth: " << depth <<
             ", elements: " << samples.size() << ") [i_leaf: " << i_leaf << "]");
     }
     else
     {
-      Split best_split;
-      std::vector<Sample*> setA, setB;
       if (node->hasSplit()) // only in reload mode
       {
-        best_split = node->getSplit();
-        split(samples, best_split, setA, setB);
+        Split best_split = node->getSplit();
+        std::vector< std::vector<Sample*> > sets;
+        applyOptimalSplit(samples, best_split, sets);
         i_node++;
         PRINT("  (2) " << (i_node/m_num_nodes)*100 << "% : split(depth: " << depth <<
-              ", elements: " << nelements << ") [A: " << setA.size() << ", B: " << setB.size() << "]");
+              ", elements: " << nelements << ") [A: " << sets[0].size() << ", B: " << sets[1].size() << "]");
 
-        grow(node->left, setA);
-        grow(node->right, setB);
+        grow(node->left, sets[0]);
+        grow(node->right, sets[1]);
       }
       else
       {
+        Split best_split;
         if (findOptimalSplit(samples, best_split, depth))
         {
-          split(samples, best_split, setA, setB);
+          std::vector< std::vector<Sample*> > sets;
+          applyOptimalSplit(samples, best_split, sets);
           node->setSplit(best_split);
           i_node++;
 
@@ -153,16 +156,16 @@ public:
 
           autoSave();
           PRINT("  (3) " << (i_node/m_num_nodes)*100 << "% : split(depth: " << depth <<
-                ", elements: " << nelements << ") [A: " << setA.size() << ", B: " << setB.size() << "]");
+                ", elements: " << nelements << ") [A: " << sets[0].size() << ", B: " << sets[1].size() << "]");
 
-          grow(left, setA);
-          grow(right, setB);
+          grow(left, sets[0]);
+          grow(right, sets[1]);
         }
         else
         {
           PRINT("  No valid split found");
           node->createLeaf(samples, m_class_weights, i_leaf);
-          i_node += pow(2.0, m_fp.max_d-depth+1) - 1;
+          i_node += pow(2.0, m_fp.max_depth-depth+1) - 1;
           i_leaf++;
           PRINT("  (4) " << (i_node/m_num_nodes)*100 << "% : make leaf(depth: " << depth <<
                 ", elements: "  << samples.size() << ") [i_leaf: " << i_leaf << "]");
@@ -222,7 +225,7 @@ public:
 
     try
     {
-      boost::archive::binary_iarchive ia(ifs);
+      boost::archive::text_iarchive ia(ifs);
       ia >> *tree;
       if ((*tree)->isFinished())
       {
@@ -258,11 +261,11 @@ public:
     try
     {
       std::ofstream ofs(path.c_str());
-      boost::archive::binary_oarchive oa(ofs);
+      boost::archive::text_oarchive oa(ofs);
       oa << *this;  // it can also save unfinished trees
       ofs.flush();
       ofs.close();
-      PRINT("  Saved: " << path);
+      PRINT("  Complete tree saved");
     }
     catch (boost::archive::archive_exception &ex)
     {
@@ -286,7 +289,7 @@ private:
     best_split.gain = boost::numeric::bounds<double>::lowest();
     best_split.oob  = boost::numeric::bounds<double>::highest();
 
-    int num_splits = m_fp.nTests; // 500 tests to find the best split
+    int num_splits = m_fp.ntests; // 500 tests to find the best split
     std::vector<Split> splits(num_splits);
 
     float time_stamp = timer.elapsed();
@@ -311,24 +314,22 @@ private:
 
   // Called from "grow"
   void
-  split
+  applyOptimalSplit
     (
     const std::vector<Sample*> &samples,
     Split &best_split,
-    std::vector<Sample*> &set_a,
-    std::vector<Sample*> &set_b
+    std::vector< std::vector<Sample*> > &sets
     )
   {
-    // Generate value for each patch
-    std::vector<IntIndex> valSet(samples.size());
-    for (unsigned int l=0; l < samples.size(); ++l)
+    // Process each patch with the optimal R1 and R2
+    std::vector<IntIndex> val_set(samples.size());
+    for (unsigned int i=0; i < samples.size(); ++i)
     {
-      valSet[l].first = samples[l]->evalTest(best_split);
-      valSet[l].second = l;
+      val_set[i].first  = samples[i]->evalTest(best_split);
+      val_set[i].second = i;
     }
-    std::sort(valSet.begin(), valSet.end());
-
-    SplitGen<Sample>::splitVec(samples, valSet, set_a, set_b, best_split.threshold, best_split.margin);
+    std::sort(val_set.begin(), val_set.end());
+    SplitGen<Sample>::splitSamples(samples, val_set, sets, best_split.threshold, best_split.margin);
   };
 
   void

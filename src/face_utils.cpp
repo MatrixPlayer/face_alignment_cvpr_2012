@@ -29,57 +29,57 @@ loadConfigFile
     {
       PRINT("Open configuration file: " << path);
 
-      // Path to images
+      // Path to load images
       std::getline(file, line);
       std::getline(file, line);
-      param.imgPath = line;
-      PRINT("> Path to images: " << param.imgPath);
+      param.image_path = line;
+      PRINT("> Path to images: " << line);
 
-      // Path to trees
+      // Path load or save trees
       std::getline(file, line);
       std::getline(file, line);
-      param.treePath = line;
-      PRINT("> Paths to trees: " << param.treePath);
+      param.tree_path = line;
+      PRINT("> Paths to trees: " << line);
 
-      // Number of trees
+      // Number of trees per forest
       std::getline(file, line);
       std::getline(file, line);
-      param.nTrees = boost::lexical_cast<int>(line);
+      param.ntrees = boost::lexical_cast<int>(line);
 
-      // Number of tests
+      // Number of tests to find the optimal split
       std::getline(file, line);
       std::getline(file, line);
-      param.nTests = boost::lexical_cast<int>(line);
+      param.ntests = boost::lexical_cast<int>(line);
 
-      // Max depth
+      // Maximum depth
       std::getline(file, line);
       std::getline(file, line);
-      param.max_d = boost::lexical_cast<int>(line);
+      param.max_depth = boost::lexical_cast<int>(line);
 
-      // Min samples per node
+      // Minimum patches per node
       std::getline(file, line);
       std::getline(file, line);
-      param.min_s = boost::lexical_cast<int>(line);
+      param.min_patches = boost::lexical_cast<int>(line);
 
       // Samples per tree
       std::getline(file, line);
       std::getline(file, line);
-      param.nSamplesPerTree = boost::lexical_cast<int>(line);
+      param.nimages = boost::lexical_cast<int>(line);
 
-      // Patches per sample
+      // Patches per image
       std::getline(file, line);
       std::getline(file, line);
-      param.nPatchesPerSample = boost::lexical_cast<int>(line);
+      param.npatches = boost::lexical_cast<int>(line);
 
-      // Face size
+      // Face size in pixels
       std::getline(file, line);
       std::getline(file, line);
-      param.faceSize = boost::lexical_cast<int>(line);
+      param.face_size = boost::lexical_cast<int>(line);
 
       // Patch size ratio
       std::getline(file, line);
       std::getline(file, line);
-      param.patchSizeRatio = boost::lexical_cast<float>(line);
+      param.patch_size_ratio = boost::lexical_cast<float>(line);
 
       // Feature channels
       std::getline(file, line);
@@ -88,20 +88,21 @@ loadConfigFile
       boost::split(strs, line, boost::is_any_of(" "));
       for (unsigned int i=0; i < strs.size(); i++)
         param.features.push_back(boost::lexical_cast<float>(strs[i]));
+
       return true;
     }
   }
 
   // Default values for ForestParam
   PRINT("Default ForestParam initialization ...");
-  param.max_d = 15;
-  param.min_s = 20;
-  param.nTests = 250;
-  param.nTrees = 10;
-  param.nPatchesPerSample = 200;
-  param.nSamplesPerTree = 500;
-  param.faceSize = 100;
-  param.patchSizeRatio = 0.25;
+  param.max_depth = 15;
+  param.min_patches = 20;
+  param.ntests = 250;
+  param.ntrees = 10;
+  param.nimages = 500;
+  param.npatches = 200;
+  param.face_size = 100;
+  param.patch_size_ratio = 0.25;
   return false;
 };
 
@@ -121,6 +122,9 @@ loadAnnotations
     {
       std::vector<std::string> strs;
       boost::split(strs, line, boost::is_any_of(" "));
+
+      // Avoid comments
+      if (strs[0] == "#") continue;
 
       FaceAnnotation ann;
       ann.url = strs[0];
@@ -154,7 +158,7 @@ getHeadPoseVotesMT
   )
 {
   ForestParam param = forest.getParam();
-  int patch_size = param.faceSize * param.patchSizeRatio;
+  int patch_size = param.face_size * param.patch_size_ratio;
   std::vector<HeadPoseSample> samples;
   samples.reserve((face_bbox.width-patch_size+1) * (face_bbox.height-patch_size+1));
   for (int x = face_bbox.x; x < face_bbox.x+face_bbox.width-patch_size; x += step_size)
@@ -186,7 +190,7 @@ getFacialFeaturesVotesMT
   )
 {
   ForestParam param = forest.getParam();
-  int patch_size = param.faceSize * param.patchSizeRatio;
+  int patch_size = param.face_size * param.patch_size_ratio;
   std::vector<MPSample> samples;
   samples.reserve((face_bbox.width-patch_size+1) * (face_bbox.height-patch_size+1));
   for (int x = face_bbox.x; x < face_bbox.x+face_bbox.width-patch_size; x += options.step_size)

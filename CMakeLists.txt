@@ -30,6 +30,7 @@ ADD_EXECUTABLE(test_cvpr_2012
     ${CMAKE_SOURCE_DIR}/include/trace.hpp
     ${CMAKE_SOURCE_DIR}/include/ThreadPool.hpp
     ${CMAKE_SOURCE_DIR}/include/Timing.hpp
+    ${CMAKE_SOURCE_DIR}/include/Constants.hpp
     ${CMAKE_SOURCE_DIR}/include/Viewer.hpp
     ${CMAKE_SOURCE_DIR}/src/Viewer.cpp
     ${CMAKE_SOURCE_DIR}/include/TreeNode.hpp

@@ -36,15 +36,15 @@ public:
 
   HeadPoseSample
     (
-    const ImageSample *image_,
-    const cv::Rect roi_,
-    cv::Rect rect_,
-    int label_
+    const ImageSample *sample,
+    const cv::Rect face_bbox,
+    cv::Rect patch_bbox,
+    int label
     ) :
-      image(image_), roi(roi_), rect(rect_), label(label_)
+      m_image(sample), m_face_bbox(face_bbox), m_patch_bbox(patch_bbox), m_label(label)
   {
-    // If the label is smaller then 0 then negative example.
-    isPos = (label >= 0);
+    // If the label is smaller then 0 then negative example
+    m_is_positive = (label >= 0);
   };
 
   HeadPoseSample
@@ -52,7 +52,7 @@ public:
     const ImageSample *image_,
     cv::Rect rect_
     ) :
-      image(image_), rect(rect_), label(-1) {};
+      m_image(image_), m_patch_bbox(rect_), m_label(-1) {};
 
   virtual
   ~HeadPoseSample
@@ -95,13 +95,14 @@ public:
     int depth
     );
 
+  // Called from TreeNode "createLeaf"
   static void
   makeLeaf
     (
     HeadPoseLeaf &leaf,
-    const std::vector<HeadPoseSample*> &set,
-    const std::vector<float> &poppClasses,
-    int leaf_id = 0
+    const std::vector<HeadPoseSample*> &samples,
+    const std::vector<float> &class_weights,
+    int i_leaf = 0
     );
 
   // Called from "Tree" initialization
@@ -111,12 +112,6 @@ public:
     std::vector<float> &class_weights,
     const std::vector<HeadPoseSample*> &samples
     );
-
-  const ImageSample *image;
-  bool isPos;
-  cv::Rect roi;
-  cv::Rect rect;
-  int label;
 
 private:
   static double
@@ -144,6 +139,12 @@ private:
     const std::vector<HeadPoseSample*> &set,
     int *num_pos_elements
     );
+
+  const ImageSample *m_image;
+  bool m_is_positive;
+  cv::Rect m_face_bbox;
+  cv::Rect m_patch_bbox;
+  int m_label;
 };
 
 /** ****************************************************************************

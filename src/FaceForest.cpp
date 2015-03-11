@@ -28,7 +28,7 @@ FaceForest::FaceForest
 
   // Loading head-pose forest on m_hp_forest
   PRINT("Loading head-pose forest");
-  if (!m_hp_forest.load(option.hp_forest_param.treePath, option.hp_forest_param))
+  if (!m_hp_forest.load(option.hp_forest_param.tree_path, option.hp_forest_param))
   {
     ERROR("(!) Error loading head-pose forest");
     return;
@@ -36,9 +36,9 @@ FaceForest::FaceForest
 
   // Loading facial-feature-detector trees on m_mp_forest
   PRINT("Loading facial-feature-detector forest");
-  num_trees = option.mp_forest_param.nTrees;
+  num_trees = option.mp_forest_param.ntrees;
   m_mp_forest.setParam(option.mp_forest_param);
-  getPathsToTrees(option.mp_forest_param.treePath, m_ff_options.mp_tree_paths);
+  getPathsToTrees(option.mp_forest_param.tree_path, m_ff_options.mp_tree_paths);
   loadingAllTrees(m_ff_options.mp_tree_paths);
 
   is_inizialized = true;
@@ -217,7 +217,7 @@ FaceForest::analyzeFace
 
   // Rescale and extract face
   cv::Mat roi;
-  float scale = static_cast<float>(m_ff_options.hp_forest_param.faceSize)/static_cast<float>(face_bbox.width);
+  float scale = static_cast<float>(m_ff_options.hp_forest_param.face_size)/static_cast<float>(face_bbox.width);
   cv::resize(img(face_bbox), roi, cv::Size(face_bbox.width*scale, face_bbox.height*scale), 0, 0);
 
   // Normalize image

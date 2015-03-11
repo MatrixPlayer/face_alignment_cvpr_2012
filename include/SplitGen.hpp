@@ -10,54 +10,14 @@
 #define SPLIT_GEN_HPP
 
 // ----------------------- INCLUDES --------------------------------------------
+#include <Constants.hpp>
 #include <ThreadPool.hpp>
 #include <opencv2/core/core.hpp>
 #include <boost/thread.hpp>
-#include <boost/serialization/access.hpp>
-#include <boost/serialization/vector.hpp>
-#include <boost/serialization/string.hpp>
 #include <boost/numeric/conversion/bounds.hpp>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int.hpp>
 #include <boost/random/variate_generator.hpp>
-
-struct ForestParam
-{
-  int max_d;
-  int min_s;
-  int nTests;
-  int nTrees;
-  int nSamplesPerTree;
-  int nPatchesPerSample;
-  int faceSize;
-  int measuremode;
-  int nFeatureChannels;
-  float patchSizeRatio;
-  std::string treePath;
-  std::string imgPath;
-  std::string featurePath;
-  std::vector<int> features;
-
-  friend class boost::serialization::access;
-  template<class Archive>
-  void serialize(Archive &ar, const unsigned int version)
-  {
-    ar & max_d;
-    ar & min_s;
-    ar & nTests;
-    ar & nTrees;
-    ar & nSamplesPerTree;
-    ar & nPatchesPerSample;
-    ar & faceSize;
-    ar & measuremode;
-    ar & nFeatureChannels;
-    ar & patchSizeRatio;
-    ar & treePath;
-    ar & imgPath;
-    ar & featurePath;
-    ar & features;
-  }
-};
 
 typedef std::pair<int, unsigned int> IntIndex;
 
@@ -142,33 +102,70 @@ public:
     }
   };
 
-  // Called from Tree "split"
-  static void splitVec(const std::vector<Sample*>& data,
-      const std::vector<IntIndex>& valSet, std::vector<Sample*>& setA,
-      std::vector<Sample*>& setB, int threshold, int margin = 0) {
-
-    // search largest value such that val<t
+  // Called from "findThreshold" and "applyOptimalsplit"
+  static void
+  splitSamples
+    (
+    const std::vector<Sample*> &samples,
+    const std::vector<IntIndex> &val_set,
+    std::vector< std::vector<Sample*> > &sets,
+    int thresh,
+    int margin
+    )
+  {
+    // Search largest value such that value < t
     std::vector<IntIndex>::const_iterator it_first, it_second;
-
-    it_first = lower_bound(valSet.begin(), valSet.end(), threshold - margin, less_than());
+    it_first = lower_bound(val_set.begin(), val_set.end(), thresh-margin, less_than());
     if (margin == 0)
       it_second = it_first;
     else
-      it_second = lower_bound(valSet.begin(), valSet.end(), threshold + margin, less_than());
+      it_second = lower_bound(val_set.begin(), val_set.end(), thresh+margin, less_than());
 
-    // Split training data into two sets A,B accroding to threshold t
-    setA.resize(it_second - valSet.begin());
-    setB.resize(valSet.end() - it_first);
+    // Split training samples into two different sets A, B according to threshold t
+    if (it_first == it_second)
+    {
+      // No intersection between the two thresholds
+      sets.resize(2);
+      sets[0].resize(it_first - val_set.begin());
+      sets[1].resize(samples.size() - sets[0].size());
 
-    std::vector<IntIndex>::const_iterator it = valSet.begin();
-    typename std::vector<Sample*>::iterator itSample;
-    for (itSample = setA.begin(); itSample < setA.end(); ++itSample, ++it)
-      (*itSample) = data[it->second];
+      std::vector<IntIndex>::const_iterator it;
+      typename std::vector<Sample*>::iterator it_sample;
 
-    it = it_first;
-    for (itSample = setB.begin(); itSample < setB.end(); ++itSample, ++it)
-      (*itSample) = data[it->second];
+      it = val_set.begin();
+      for (it_sample = sets[0].begin(); it_sample < sets[0].end(); ++it_sample, ++it)
+        (*it_sample) = samples[it->second];
 
+      it = val_set.begin() + sets[0].size();
+      for (it_sample = sets[1].begin(); it_sample < sets[1].end(); ++it_sample, ++it)
+        (*it_sample) = samples[it->second];
+
+      CV_Assert((sets[0].size() + sets[1].size()) == samples.size());
+    }
+    else
+    {
+      sets.resize(3);
+      sets[0].resize(it_first - val_set.begin());
+      sets[1].resize(it_second - it_first);
+      sets[2].resize(val_set.end() - it_second);
+
+      std::vector<IntIndex>::const_iterator it;
+      typename std::vector<Sample*>::iterator it_sample;
+
+      it = val_set.begin();
+      for (it_sample = sets[0].begin(); it_sample < sets[0].end(); ++it_sample, ++it)
+        (*it_sample) = samples[it->second];
+
+      it = val_set.begin() + sets[0].size();
+      for (it_sample = sets[1].begin(); it_sample < sets[1].end(); ++it_sample, ++it)
+        (*it_sample) = samples[it->second];
+
+      it = val_set.begin() + sets[0].size() + sets[1].size();
+      for (it_sample = sets[2].begin(); it_sample < sets[2].end(); ++it_sample, ++it)
+        (*it_sample) = samples[it->second];
+
+      CV_Assert((sets[0].size() + sets[1].size() + sets[2].size()) == samples.size());
+    }
   };
 
 private:
@@ -234,72 +231,6 @@ private:
           split.margin = margin;
         }
       }
-    }
-  };
-
-  // Called from "findThreshold"
-  static void
-  splitSamples
-    (
-    const std::vector<Sample*> &samples,
-    const std::vector<IntIndex> &val_set,
-    std::vector< std::vector<Sample*> > &sets,
-    int thresh,
-    int margin
-    )
-  {
-    // Search largest value such that value < t
-    std::vector<IntIndex>::const_iterator it_first, it_second;
-    it_first = lower_bound(val_set.begin(), val_set.end(), thresh-margin, less_than());
-    if (margin == 0)
-      it_second = it_first;
-    else
-      it_second = lower_bound(val_set.begin(), val_set.end(), thresh+margin, less_than());
-
-    // Split training samples into two different sets A, B according to threshold t
-    if (it_first == it_second)
-    {
-      // No intersection between the two thresholds
-      sets.resize(2);
-      sets[0].resize(it_first - val_set.begin());
-      sets[1].resize(samples.size() - sets[0].size());
-
-      std::vector<IntIndex>::const_iterator it;
-      typename std::vector<Sample*>::iterator it_sample;
-
-      it = val_set.begin();
-      for (it_sample = sets[0].begin(); it_sample < sets[0].end(); ++it_sample, ++it)
-        (*it_sample) = samples[it->second];
-
-      it = val_set.begin() + sets[0].size();
-      for (it_sample = sets[1].begin(); it_sample < sets[1].end(); ++it_sample, ++it)
-        (*it_sample) = samples[it->second];
-
-      CV_Assert((sets[0].size() + sets[1].size()) == samples.size());
-    }
-    else
-    {
-      sets.resize(3);
-      sets[0].resize(it_first - val_set.begin());
-      sets[1].resize(it_second - it_first);
-      sets[2].resize(val_set.end() - it_second);
-
-      std::vector<IntIndex>::const_iterator it;
-      typename std::vector<Sample*>::iterator it_sample;
-
-      it = val_set.begin();
-      for (it_sample = sets[0].begin(); it_sample < sets[0].end(); ++it_sample, ++it)
-        (*it_sample) = samples[it->second];
-
-      it = val_set.begin() + sets[0].size();
-      for (it_sample = sets[1].begin(); it_sample < sets[1].end(); ++it_sample, ++it)
-        (*it_sample) = samples[it->second];
-
-      it = val_set.begin() + sets[0].size() + sets[1].size();
-      for (it_sample = sets[2].begin(); it_sample < sets[2].end(); ++it_sample, ++it)
-        (*it_sample) = samples[it->second];
-
-      CV_Assert((sets[0].size() + sets[1].size() + sets[2].size()) == samples.size());
     }
   };
 
