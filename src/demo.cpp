@@ -110,7 +110,7 @@ main
 
   // Loading images annotations
   std::vector<FaceAnnotation> annotations;
-  if (!loadAnnotations(mp_param.imgPath, annotations))
+  if (!loadAnnotations(mp_param.image_path, annotations))
     return EXIT_FAILURE;
 
   switch (mode)

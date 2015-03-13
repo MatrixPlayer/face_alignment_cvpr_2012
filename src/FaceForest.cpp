@@ -35,11 +35,11 @@ FaceForest::FaceForest
   }
 
   // Loading facial-feature-detector trees on m_mp_forest
-  PRINT("Loading facial-feature-detector forest");
+  /*PRINT("Loading facial-feature-detector forest");
   num_trees = option.mp_forest_param.ntrees;
   m_mp_forest.setParam(option.mp_forest_param);
   getPathsToTrees(option.mp_forest_param.tree_path, m_ff_options.mp_tree_paths);
-  loadingAllTrees(m_ff_options.mp_tree_paths);
+  loadingAllTrees(m_ff_options.mp_tree_paths);*/
 
   is_inizialized = true;
 };
@@ -118,7 +118,6 @@ FaceForest::estimateFacialFeatures
 void
 FaceForest::showResults
   (
-  const cv::Mat img,
   std::vector<Face> &faces,
   upm::Viewer &viewer
   )
@@ -215,7 +214,7 @@ FaceForest::analyzeFace
   CV_Assert(img.type() == CV_8UC1);
   face.bbox = face_bbox;
 
-  // Rescale and extract face
+  // Scale and extract face
   cv::Mat roi;
   float scale = static_cast<float>(m_ff_options.hp_forest_param.face_size)/static_cast<float>(face_bbox.width);
   cv::resize(img(face_bbox), roi, cv::Size(face_bbox.width*scale, face_bbox.height*scale), 0, 0);
@@ -236,7 +235,7 @@ FaceForest::analyzeFace
   estimateHeadPose(sample, cv::Rect(0,0,roi.cols,roi.rows), m_hp_forest, m_ff_options.hp_option, &headpose, &variance);
   face.headpose = headpose;
 
-  // Compute area under curve
+  /*// Compute area under curve
   int hist_size = 5;
   std::vector<float> poseT(hist_size + 1);
   poseT[0] = -2.5;
@@ -280,12 +279,12 @@ FaceForest::analyzeFace
   /// Estimate facial feature points
   estimateFacialFeatures(sample, cv::Rect(0,0,roi.cols,roi.rows), m_mp_forest, m_ff_options.mp_option, face.ffd_cordinates);
 
-  // Rescale results
+  // Scale results
   for (unsigned int i=0; i < face.ffd_cordinates.size(); i++)
   {
     face.ffd_cordinates[i].x /= scale;
     face.ffd_cordinates[i].y /= scale;
-  }
+  }*/
 };
 
 void

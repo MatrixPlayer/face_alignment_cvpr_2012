@@ -23,8 +23,8 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int.hpp>
 #include <boost/random/variate_generator.hpp>
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
 
 /** ****************************************************************************
  * @class Tree
@@ -38,13 +38,8 @@ public:
   typedef typename Sample::Leaf Leaf;
 
   Tree
-    ()
-  {
-    timer.restart();
-    m_last_save_point = 0;
-  };
+    () {};
 
-  // Train a random tree from "train_headpose" or "train_ffd"
   Tree
     (
     const std::vector<Sample*> &samples,
@@ -63,7 +58,6 @@ public:
     m_save_path = save_path;
     Sample::calcWeightClasses(m_class_weights, samples);
     root = new TreeNode<Sample>(0);
-
     PRINT("Start training");
     grow(root, samples);
     PRINT("Save tree: " << m_save_path);
@@ -87,25 +81,27 @@ public:
     return i_node == m_num_nodes;
   };
 
-  /*std::vector<float> getClassWeights() {
-    return m_class_weights;
-  };*/
-
-  /*//start growing the tree
-  void grow(const std::vector<Sample*>& data, Timing jobTimer, boost::mt19937* rng_) {
-    m_rng = rng_;
-    timer = jobTimer;
+  void
+  updateTree
+    (
+    const std::vector<Sample*> &samples,
+    boost::mt19937* rng
+    )
+  {
+    m_rng = rng;
     timer.restart();
     m_last_save_point = timer.elapsed();
-
-    std::cout << int((i_node / m_num_nodes) * 100) << "% : LOADED TREE " << std::endl;
-    if (!isFinished()) {
+    PRINT((i_node/m_num_nodes)*100 << "% : update tree");
+    if (!isFinished())
+    {
       i_node = 0;
       i_leaf = 0;
-      grow(root, data);
+      PRINT("Start training");
+      grow(root, samples);
+      PRINT("Save tree: " << m_save_path);
       save(m_save_path);
     }
-  }*/
+  };
 
   void
   grow
@@ -174,17 +170,30 @@ public:
     }
   };
 
-  //sends the sample down the tree and return a pointer to the leaf.
-  /*static void evaluate(const Sample* sample, TreeNode<Sample>* node,
-      std::vector<Leaf*>& leafs) {
+  /*std::vector<float>
+  getClassWeights
+    ()
+  {
+    return m_class_weights;
+  };*/
+
+  // Sends the sample down the tree and return a pointer to the leaf.
+  /*static void
+  evaluate
+    (
+    const Sample *sample,
+    TreeNode<Sample> *node,
+    std::vector<Leaf*> &leafs
+    )
+  {
     if (node->isLeaf())
       leafs.push_back(node->getLeaf());
-    else {
-      if (node->eval(sample)) {
+    else
+    {
+      if (node->eval(sample))
         evaluate(sample, node->left, leafs);
-      } else {
+      else
         evaluate(sample, node->right, leafs);
-      }
     }
   };*/
 
@@ -225,7 +234,7 @@ public:
 
     try
     {
-      boost::archive::text_iarchive ia(ifs);
+      boost::archive::binary_iarchive ia(ifs);
       ia >> *tree;
       if ((*tree)->isFinished())
       {
@@ -233,7 +242,7 @@ public:
       }
       else
       {
-        PRINT("  Unfinished tree reloaded, keep growing ...");
+        PRINT("  Unfinished tree reloaded");
       }
       ifs.close();
       return true;
@@ -261,8 +270,8 @@ public:
     try
     {
       std::ofstream ofs(path.c_str());
-      boost::archive::text_oarchive oa(ofs);
-      oa << *this;  // it can also save unfinished trees
+      boost::archive::binary_oarchive oa(ofs);
+      oa << *this; // it can also save unfinished trees
       ofs.flush();
       ofs.close();
       PRINT("  Complete tree saved");
@@ -275,7 +284,7 @@ public:
 
   TreeNode<Sample> *root; // root node of the tree
 
-private:
+//private:
   // Called from "grow"
   bool
   findOptimalSplit
@@ -298,7 +307,6 @@ private:
     int split_mode = rand_split();
     SplitGen<Sample> sg(samples, splits, m_rng, m_fp, depth, split_mode);
     sg.generate();
-    PRINT("  Optimal split mode: " << split_mode);
     PRINT("  Time: " << timer.elapsed()-time_stamp << " ms (" << timer.elapsed() << " ms)");
 
     // Select the splitting which maximizes the information gain
@@ -342,7 +350,7 @@ private:
     if ((time_stamp - m_last_save_point) > save_interval)
     {
       m_last_save_point = timer.elapsed();
-      PRINT(timer.elapsed() << " ms (autoSave at " << m_last_save_point << ")");
+      PRINT("Automatic tree saved at " << m_last_save_point << " ms)");
       save(m_save_path);
     }
   };

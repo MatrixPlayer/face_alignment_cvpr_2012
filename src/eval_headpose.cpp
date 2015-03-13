@@ -1,33 +1,24 @@
 /** ****************************************************************************
- *  @file    eval_ffd.cpp
- *  @brief   Real-time facial feature detection
- *  @author  Matthias Dantone
- *  @date    2012/08
+ *  @file    eval_headpose.cpp
+ *  @brief   Real-time facial pose and feature detection
+ *  @author  Roberto Valle Fernandez
+ *  @date    2015/02
+ *  @copyright All rights reserved.
+ *  Software developed by UPM PCR Group: http://www.dia.fi.upm.es/~pcr
  ******************************************************************************/
 
 // ----------------------- INCLUDES --------------------------------------------
 #include <trace.hpp>
-#include <FaceForest.hpp>
+#include <Constants.hpp>
 #include <face_utils.hpp>
+#include <Viewer.hpp>
+#include <FaceForest.hpp>
+
+#include <vector>
+#include <string>
 #include <fstream>
 #include <boost/progress.hpp>
 #include <opencv2/opencv.hpp>
-
-// The distance between the eyes
-float
-getInterOccularDist
-  (
-  const FaceAnnotation &annotation
-  )
-{
-  cv::Point2f center_left, center_right;
-  center_left.x  = (annotation.parts[0].x+annotation.parts[2].x)/2;
-  center_left.y  = (annotation.parts[0].y+annotation.parts[2].y)/2;
-  center_right.x = (annotation.parts[6].x+annotation.parts[7].x)/2;
-  center_right.y = (annotation.parts[6].y+annotation.parts[7].y)/2;
-
-  return cv::norm(center_left-center_right);
-};
 
 void
 evalForest
@@ -39,15 +30,16 @@ evalForest
   // Initialize face forest
   FaceForest ff(ff_options);
 
-  std::vector< std::vector<float> > errors;
+  upm::Viewer viewer;
+  viewer.init(0, 0, "demo");
   boost::progress_display show_progress(annotations.size());
-  for (int i=0; i < static_cast<int>(annotations.size()); ++i, ++show_progress)
+  for (int i=0; i < static_cast<int>(annotations.size()); i++, ++show_progress)
   {
-    TRACE("Evaluate image: " << annotations[i].url);
+    PRINT("Evaluate image: " << annotations[i].url);
 
     // Load image
-    cv::Mat image = cv::imread(annotations[i].url, cv::IMREAD_COLOR);
-    if (image.data == NULL)
+    cv::Mat img = cv::imread(annotations[i].url, cv::IMREAD_COLOR);
+    if (img.empty())
     {
       ERROR("Could not load: " << annotations[i].url);
       continue;
@@ -55,33 +47,32 @@ evalForest
 
     // Convert image to gray scale
     cv::Mat img_gray;
-    cv::cvtColor(image, img_gray, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
 
+    std::vector<Face> faces;
     Face face;
     ff.analyzeFace(img_gray, annotations[i].bbox, face);
+    faces.push_back(face);
 
-    std::vector<float> err;
-    float inter_occular_dist = getInterOccularDist(annotations[i]);
-    for (int j=0; j < face.ffd_cordinates.size(); j++)
-    {
-      float d = cv::norm(annotations[i].parts[j]-face.ffd_cordinates[j]);
-      err.push_back(d / inter_occular_dist);
-    }
-    errors.push_back(err);
-  }
-
-  // Write errors on a file
-  std::ofstream ofs;
-  std::string path = "output/errors.txt";
-  ofs.open(path.c_str(), std::ios::out);
-  for (int i=0; i < errors.size(); i++)
-  {
-    for(int j=0; j < errors[i].size(); j++)
-      ofs << errors[i][j] << " ";
-    ofs << std::endl;
+    // Draw results
+    viewer.resizeCanvas(img.cols, img.rows);
+    viewer.beginDrawing();
+    viewer.image(img, 0, 0, img.cols, img.rows);
+    ff.showResults(faces, viewer);
+    PRINT("Head-pose: predict=" << face.headpose << " real=" << annotations[i].pose);
+    viewer.endDrawing(0);
   }
 };
 
+// -----------------------------------------------------------------------------
+//
+// Purpose and Method:
+// Inputs:
+// Outputs:
+// Dependencies:
+// Restrictions and Caveats:
+//
+// -----------------------------------------------------------------------------
 int
 main
   (
@@ -89,7 +80,7 @@ main
   char **argv
   )
 {
-  // Evaluate feature points detector
+  // Evaluate head-pose forest
   std::string ffd_config_file = "data/config_ffd.txt";
   std::string headpose_config_file = "data/config_headpose.txt";
   std::string face_cascade = "data/haarcascade_frontalface_alt.xml";

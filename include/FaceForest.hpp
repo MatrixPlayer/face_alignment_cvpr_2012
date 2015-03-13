@@ -118,7 +118,6 @@ public:
   static void
   showResults
     (
-    const cv::Mat img,
     std::vector<Face> &faces,
     upm::Viewer &viewer
     );

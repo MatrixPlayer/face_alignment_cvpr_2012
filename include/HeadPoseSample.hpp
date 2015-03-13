@@ -31,9 +31,7 @@ public:
   typedef ThresholdSplit<SimplePatchFeature> Split;
   typedef HeadPoseLeaf Leaf;
 
-  HeadPoseSample
-    () {};
-
+  // Training
   HeadPoseSample
     (
     const ImageSample *sample,
@@ -47,6 +45,7 @@ public:
     m_is_positive = (label >= 0);
   };
 
+  // Testing
   HeadPoseSample
     (
     const ImageSample *image_,

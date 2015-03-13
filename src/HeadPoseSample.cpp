@@ -11,14 +11,19 @@
 #include <boost/numeric/conversion/bounds.hpp>
 
 void
-HeadPoseSample::show()
+HeadPoseSample::show
+  ()
 {
-  cv::imshow("Head-pose X", m_image->m_feature_channels[0](m_patch_bbox));
-  cv::Mat face = m_image->m_feature_channels[0].clone();
-  cv::rectangle(face, m_patch_bbox, cv::Scalar(255, 255, 255, 0));
+  cv::Scalar white_color = cv::Scalar(255, 255, 255);
+  cv::Scalar black_color = cv::Scalar(0, 0, 0);
+  cv::Mat img = m_image->m_feature_channels[0].clone();
+  cv::imshow("Patch", img(m_patch_bbox));
+  cv::rectangle(img, m_face_bbox, white_color);
   if (m_label >= 0)
-    cv::rectangle(face, m_face_bbox, cv::Scalar(255, 255, 255, 0));
-  cv::imshow("Head-pose Y", face);
+    cv::rectangle(img, m_patch_bbox, white_color);
+  else
+    cv::rectangle(img, m_patch_bbox, black_color);
+  cv::imshow("Face", img);
   cv::waitKey(0);
 };
 

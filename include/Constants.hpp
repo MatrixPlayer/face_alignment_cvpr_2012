@@ -73,6 +73,8 @@ class Constants
 {
 public:
   static const unsigned NUM_HP_CLASSES = 5;
+  static const unsigned MAX_NEG_ATTEMPTS = 100;
+  static const float NEG_PATCHES_RATIO = 0.2f;
 };
 
 #endif /* CONSTANTS_HPP */
