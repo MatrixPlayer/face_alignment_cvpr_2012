@@ -45,15 +45,24 @@ public:
   void
   addTree
     (
-    Tree<Sample> *t
+    Tree<Sample> *tree
     )
   {
-    m_trees.push_back(t);
+    m_trees.push_back(tree);
+  };
+
+  Tree<Sample>*
+  getTree
+    (
+    int idx
+    )
+  {
+    return m_trees[idx];
   };
 
   //sends the Sample down the tree
   /*void evaluate(const Sample* f, std::vector<Leaf*>& leafs) const {
-    for (unsigned int i = 0; i < m_trees.size(); i++)
+    for (unsigned int i = 0; i < numberOfTrees(); i++)
       m_trees[i]->evaluate(f, m_trees[i]->root, leafs);
   }*/
 
@@ -65,7 +74,7 @@ public:
     Leaf **leafs
     ) const
   {
-    for (unsigned int i=0; i < m_trees.size(); i++)
+    for (unsigned int i=0; i < numberOfTrees(); i++)
     {
       m_trees[i]->evaluateMT(sample, m_trees[i]->root, leafs);
       leafs++;
@@ -73,7 +82,7 @@ public:
   };
 
   /*void save(std::string url, int offset = 0) {
-    for (unsigned int i = 0; i < m_trees.size(); i++) {
+    for (unsigned int i = 0; i < numberOfTrees(); i++) {
 
       char buffer[200];
       sprintf(buffer, "%s%03d.txt", url.c_str(), i + offset);
@@ -86,23 +95,23 @@ public:
   bool
   load
     (
-    std::string url,
+    std::string path,
     ForestParam fp,
     int max_trees = -1
     )
   {
-    m_forest_param = fp;
+    setParam(fp);
     if (max_trees == -1)
       max_trees = fp.ntrees;
     PRINT("> Trees to load: " << fp.ntrees);
 
     for (int i=0; i < fp.ntrees; i++)
     {
-      if (static_cast<int>(m_trees.size()) > max_trees)
+      if (numberOfTrees() > max_trees)
         continue;
 
       char buffer[200];
-      sprintf(buffer, "%s%03d.txt", url.c_str(), i);
+      sprintf(buffer, "%s/tree_%03d.txt", path.c_str(), i);
       std::string tree_path = buffer;
       PRINT("  Load " << tree_path);
       if (!load_tree(tree_path, m_trees))
@@ -156,8 +165,8 @@ public:
   }
 
   void getAllLeafs(std::vector<std::vector<Leaf*> >& leafs) {
-    leafs.resize(m_trees.size());
-    for (unsigned int i = 0; i < m_trees.size(); i++)
+    leafs.resize(numberOfTrees());
+    for (unsigned int i = 0; i < numberOfTrees(); i++)
       m_trees[i]->root->collectLeafs(leafs[i]);
 
   }*/

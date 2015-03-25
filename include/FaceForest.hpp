@@ -64,7 +64,7 @@ struct FaceForestOptions
   FaceDetectionOption fd_option;
   HeadPoseEstimatorOption hp_option;
   MultiPartEstimatorOption mp_option;
-  std::vector<std::string> mp_tree_paths;
+  std::vector<std::string> mp_forest_paths;
 };
 
 struct Face
@@ -83,7 +83,7 @@ class FaceForest
 public:
   FaceForest
     () :
-    m_trees(0), num_trees(0), is_inizialized(false) {};
+      m_mp_jungle(0), is_inizialized(false) {};
 
   FaceForest
     (
@@ -148,25 +148,11 @@ public:
     );
 
 private:
-  void
-  getPathsToTrees
-    (
-    std::string path,
-    std::vector<std::string> &urls
-    );
-
-  void
-  loadingAllTrees
-    (
-     std::vector<std::string> urls
-     );
-
-  FaceForestOptions m_ff_options;
+  FaceForestOptions m_options;
   cv::CascadeClassifier m_face_cascade;
   Forest<HeadPoseSample> m_hp_forest;
   Forest<MPSample> m_mp_forest;
-  std::vector< std::vector<Tree<MPSample>*> > m_trees;
-  int num_trees;
+  std::vector< Forest<MPSample> > m_mp_jungle;
   FeatureChannelFactory fcf;
   bool is_inizialized;
 };

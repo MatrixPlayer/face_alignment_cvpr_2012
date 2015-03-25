@@ -1,7 +1,7 @@
 ____Path to images index file
 ../../database/faces/lfw/lfw_ffd_ann.txt
 ____Path to trees
-data/trees_headpose/tree_
+data/trees_headpose_original
 ____Number of trees
 15
 ____Number of tests

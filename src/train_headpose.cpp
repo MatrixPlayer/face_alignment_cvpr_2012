@@ -76,8 +76,8 @@ trainHeadposeForest
     TRACE("Evaluate image: " << annotations[i].url);
 
     // Load image
-    std::size_t pos = fp.image_path.find("lfw_ffd_ann.txt");
-    std::string img_path = fp.image_path.substr(0, pos) + annotations[i].url;
+    std::size_t pos = fp.image_path.rfind("/")+1;
+    std::string img_path = fp.image_path.substr(0,pos) + annotations[i].url;
     cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
     if (img.empty())
     {

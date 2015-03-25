@@ -38,13 +38,7 @@ processFrame
   )
 {
   double ticks = static_cast<double>(cv::getTickCount());
-
-  // Convert to gray scale
-  cv::Mat frame_gray;
-  cv::cvtColor(frame, frame_gray, cv::COLOR_BGR2GRAY);
-
-  ff.analyzeImage(frame_gray, faces);
-
+  ff.analyzeImage(frame, faces);
   ticks = static_cast<double>(cv::getTickCount()) - ticks;
   return ticks;
 };
@@ -77,7 +71,7 @@ showResults
   viewer.resizeCanvas(frame.cols, frame.rows);
   viewer.beginDrawing();
   viewer.image(frame, 0, 0, frame.cols, frame.rows);
-  ff.showResults(frame, faces, viewer);
+  ff.showResults(faces, viewer);
   viewer.text(outs.str(), 20, frame.rows-20, cv::Scalar(255,0,255), 0.5);
   viewer.endDrawing(delay);
 };

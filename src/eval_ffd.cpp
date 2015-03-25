@@ -7,6 +7,7 @@
 
 // ----------------------- INCLUDES --------------------------------------------
 #include <trace.hpp>
+#include <Viewer.hpp>
 #include <FaceForest.hpp>
 #include <face_utils.hpp>
 #include <fstream>
@@ -39,6 +40,8 @@ evalForest
   // Initialize face forest
   FaceForest ff(ff_options);
 
+  upm::Viewer viewer;
+  viewer.init(0, 0, "demo");
   std::vector< std::vector<float> > errors;
   boost::progress_display show_progress(annotations.size());
   for (int i=0; i < static_cast<int>(annotations.size()); ++i, ++show_progress)
@@ -46,19 +49,27 @@ evalForest
     TRACE("Evaluate image: " << annotations[i].url);
 
     // Load image
-    cv::Mat image = cv::imread(annotations[i].url, cv::IMREAD_COLOR);
-    if (image.data == NULL)
+    std::string dir = ff_options.mp_forest_param.image_path;
+    std::size_t pos = dir.rfind("/")+1;
+    std::string img_path = dir.substr(0,pos) + annotations[i].url;
+    cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
+    if (img.empty())
     {
       ERROR("Could not load: " << annotations[i].url);
       continue;
     }
 
-    // Convert image to gray scale
-    cv::Mat img_gray;
-    cv::cvtColor(image, img_gray, cv::COLOR_BGR2GRAY);
-
+    std::vector<Face> faces;
     Face face;
-    ff.analyzeFace(img_gray, annotations[i].bbox, face);
+    ff.analyzeFace(img, annotations[i].bbox, face);
+    faces.push_back(face);
+
+    // Draw results
+    viewer.resizeCanvas(img.cols, img.rows);
+    viewer.beginDrawing();
+    viewer.image(img, 0, 0, img.cols, img.rows);
+    ff.showResults(faces, viewer);
+    viewer.endDrawing(0);
 
     std::vector<float> err;
     float inter_occular_dist = getInterOccularDist(annotations[i]);

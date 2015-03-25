@@ -6,21 +6,21 @@
  ******************************************************************************/
 
 // ----------------------- INCLUDES --------------------------------------------
-#include <trace.hpp>
 #include <FaceForest.hpp>
-#include <boost/filesystem.hpp>
+#include <trace.hpp>
 #include <face_utils.hpp>
 #include <MeanShift.hpp>
+#include <boost/filesystem.hpp>
 
 FaceForest::FaceForest
   (
   FaceForestOptions option
   ) :
-    m_ff_options(option)
+  m_options(option)
 {
   // Loading face cascade classifier on m_face_cascade
   PRINT("Loading face cascade classifier");
-  if (!m_face_cascade.load(option.fd_option.path_face_cascade))
+  if (!m_face_cascade.load(m_options.fd_option.path_face_cascade))
   {
     ERROR("(!) Error loading cascade classifier");
     return;
@@ -28,18 +28,31 @@ FaceForest::FaceForest
 
   // Loading head-pose forest on m_hp_forest
   PRINT("Loading head-pose forest");
-  if (!m_hp_forest.load(option.hp_forest_param.tree_path, option.hp_forest_param))
+  if (!m_hp_forest.load(m_options.hp_forest_param.tree_path, m_options.hp_forest_param))
   {
     ERROR("(!) Error loading head-pose forest");
     return;
   }
 
-  // Loading facial-feature-detector trees on m_mp_forest
-  /*PRINT("Loading facial-feature-detector forest");
-  num_trees = option.mp_forest_param.ntrees;
-  m_mp_forest.setParam(option.mp_forest_param);
-  getPathsToTrees(option.mp_forest_param.tree_path, m_ff_options.mp_tree_paths);
-  loadingAllTrees(m_ff_options.mp_tree_paths);*/
+  // Loading facial-feature-detect forests on m_mp_jungle
+  PRINT("Loading facial-feature-detect forests");
+  boost::filesystem::path dir_path(m_options.mp_forest_param.tree_path);
+  boost::filesystem::directory_iterator end_it;
+  for (boost::filesystem::directory_iterator it(dir_path); it != end_it; ++it)
+    if (is_directory(it->status()))
+      m_options.mp_forest_paths.push_back(it->path().string());
+  sort(m_options.mp_forest_paths.begin(), m_options.mp_forest_paths.end());
+  PRINT("> Number of forest directories found: " << m_options.mp_forest_paths.size());
+  for (unsigned int i=0; i < m_options.mp_forest_paths.size(); i++)
+  {
+    Forest<MPSample> mp_forest;
+    if (!mp_forest.load(m_options.mp_forest_paths[i], m_options.mp_forest_param))
+    {
+      ERROR("(!) Error loading facial-feature-detect forest");
+      return;
+    }
+    m_mp_jungle.push_back(mp_forest);
+  }
 
   is_inizialized = true;
 };
@@ -189,7 +202,7 @@ void FaceForest::analyzeImage
 
   // Detect the face
   std::vector<cv::Rect> faces_bboxes;
-  detectFace(img, m_face_cascade, m_ff_options.fd_option, faces_bboxes);
+  detectFace(img, m_face_cascade, m_options.fd_option, faces_bboxes);
   TRACE("Number of detected faces: " << faces_bboxes.size());
 
   // Analyze each detected face
@@ -211,32 +224,35 @@ FaceForest::analyzeFace
   )
 {
   CV_Assert(is_inizialized);
-  CV_Assert(img.type() == CV_8UC1);
   face.bbox = face_bbox;
 
-  // Scale and extract face
-  cv::Mat roi;
-  float scale = static_cast<float>(m_ff_options.hp_forest_param.face_size)/static_cast<float>(face_bbox.width);
-  cv::resize(img(face_bbox), roi, cv::Size(face_bbox.width*scale, face_bbox.height*scale), 0, 0);
+  // Convert image to gray scale
+  cv::Mat img_gray;
+  cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
 
-  // Normalize image
+  // Scale image
+  cv::Mat img_face;
+  float scale = static_cast<float>(m_options.hp_forest_param.face_size)/static_cast<float>(face_bbox.width);
+  cv::resize(img_gray(face_bbox), img_face, cv::Size(face_bbox.width*scale, face_bbox.height*scale), 0, 0);
+
+  // Normalize histogram
   if (normalize)
-    cv::equalizeHist(roi, roi);
+    cv::equalizeHist(img_face, img_face);
 
   // Create image sample
   Timing timer;
   timer.start();
-  ImageSample sample(roi, m_ff_options.hp_forest_param.features, fcf, true);
+  ImageSample sample(img_face, m_options.hp_forest_param.features, fcf, true);
   TRACE("Creating image sample: " << timer.elapsed());
   timer.restart();
 
   /// Estimate head-pose
   float headpose = 0, variance = 0;
-  estimateHeadPose(sample, cv::Rect(0,0,roi.cols,roi.rows), m_hp_forest, m_ff_options.hp_option, &headpose, &variance);
+  estimateHeadPose(sample, cv::Rect(0,0,img_face.cols,img_face.rows), m_hp_forest, m_options.hp_option, &headpose, &variance);
   face.headpose = headpose;
 
-  /*// Compute area under curve
-  int hist_size = 5;
+  // Compute area under curve
+  int hist_size = static_cast<int>(m_mp_jungle.size());
   std::vector<float> poseT(hist_size + 1);
   poseT[0] = -2.5;
   poseT[1] = -0.35;
@@ -258,70 +274,25 @@ FaceForest::analyzeFace
       dominant_headpose = j;
     }
   }
-  timer.restart();
 
   // Add new trees based on the estimated head-pose
-  CV_Assert(m_trees.size() == pose_freq.size());
-  CV_Assert(static_cast<int>(m_trees.size()) == hist_size);
+  m_mp_forest.setParam(m_options.mp_forest_param);
   m_mp_forest.cleanForest();
-
-  for (unsigned int i=0; i < m_trees.size(); i++)
+  for (unsigned i=0; i < m_mp_jungle.size(); i++)
   {
-    int ntrees = static_cast<int>(floor(pose_freq[i] * num_trees));
+    int ntrees = static_cast<int>(floor(pose_freq[i] * m_options.mp_forest_param.ntrees));
     for (int j=0; j < ntrees; j++)
-      m_mp_forest.addTree(m_trees[i][j]);
+      m_mp_forest.addTree(m_mp_jungle[i].getTree(j));
   }
 
   // Correcting floor rounding errors
-  for (int i = m_mp_forest.numberOfTrees(); i < num_trees; i++)
-    m_mp_forest.addTree(m_trees[dominant_headpose][i]);
+  for (int i=m_mp_forest.numberOfTrees(); i < m_options.mp_forest_param.ntrees; i++)
+    m_mp_forest.addTree(m_mp_jungle[dominant_headpose].getTree(i));
 
   /// Estimate facial feature points
-  estimateFacialFeatures(sample, cv::Rect(0,0,roi.cols,roi.rows), m_mp_forest, m_ff_options.mp_option, face.ffd_cordinates);
+  estimateFacialFeatures(sample, cv::Rect(0,0,img_face.cols,img_face.rows), m_mp_forest, m_options.mp_option, face.ffd_cordinates);
 
   // Scale results
-  for (unsigned int i=0; i < face.ffd_cordinates.size(); i++)
-  {
-    face.ffd_cordinates[i].x /= scale;
-    face.ffd_cordinates[i].y /= scale;
-  }*/
-};
-
-void
-FaceForest::getPathsToTrees
-  (
-  std::string path,
-  std::vector<std::string> &urls
-  )
-{
-  boost::filesystem::path dir_path(path);
-  boost::filesystem::directory_iterator end_it;
-  for (boost::filesystem::directory_iterator it(dir_path); it != end_it; ++it)
-  {
-    if (is_directory(it->status()))
-      urls.push_back(it->path().string());
-  }
-  sort(urls.begin(), urls.end());
-  PRINT("> Number of forest directories found: " << urls.size());
-};
-
-void
-FaceForest::loadingAllTrees
-  (
-  std::vector<std::string> urls
-  )
-{
-  for (unsigned int i=0; i < urls.size(); i++)
-  {
-    std::vector<Tree<MPSample>*> all_trees;
-    for (int j=0; j < num_trees; j++)
-    {
-      char buffer[200];
-      sprintf(buffer, "%s/tree_%03d.txt", urls[i].c_str(), j);
-      std::string tree_path = buffer;
-      PRINT("  Load " << tree_path);
-      Forest<MPSample>::load_tree(tree_path, all_trees);
-    }
-    m_trees.push_back(all_trees);
-  }
+  for (unsigned i=0; i < face.ffd_cordinates.size(); i++)
+    face.ffd_cordinates[i] /= scale;
 };
