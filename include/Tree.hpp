@@ -23,8 +23,8 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int.hpp>
 #include <boost/random/variate_generator.hpp>
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 
 /** ****************************************************************************
  * @class Tree
@@ -234,8 +234,10 @@ public:
 
     try
     {
-      boost::archive::binary_iarchive ia(ifs);
+      boost::archive::text_iarchive ia(ifs);
       ia >> *tree;
+      //std::cout << "nimages: " << (*tree)->m_fp.nimages << std::endl;
+
       if ((*tree)->isFinished())
       {
         PRINT("  Complete tree reloaded");
@@ -270,7 +272,7 @@ public:
     try
     {
       std::ofstream ofs(path.c_str());
-      boost::archive::binary_oarchive oa(ofs);
+      boost::archive::text_oarchive oa(ofs);
       oa << *this; // it can also save unfinished trees
       ofs.flush();
       ofs.close();

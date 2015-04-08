@@ -10,9 +10,13 @@
 #include <Viewer.hpp>
 #include <FaceForest.hpp>
 #include <face_utils.hpp>
+
+#include <vector>
+#include <string>
+#include <cstdlib>
 #include <fstream>
 #include <boost/progress.hpp>
-#include <opencv2/opencv.hpp>
+#include <opencv2/highgui.hpp>
 
 // The distance between the eyes
 float
@@ -40,8 +44,8 @@ evalForest
   // Initialize face forest
   FaceForest ff(ff_options);
 
-  upm::Viewer viewer;
-  viewer.init(0, 0, "demo");
+  /*upm::Viewer viewer;
+  viewer.init(0, 0, "demo");*/
   std::vector< std::vector<float> > errors;
   boost::progress_display show_progress(annotations.size());
   for (int i=0; i < static_cast<int>(annotations.size()); ++i, ++show_progress)
@@ -59,17 +63,17 @@ evalForest
       continue;
     }
 
-    std::vector<Face> faces;
     Face face;
     ff.analyzeFace(img, annotations[i].bbox, face);
-    faces.push_back(face);
+    /*std::vector<Face> faces;
+    faces.push_back(face);*/
 
     // Draw results
-    viewer.resizeCanvas(img.cols, img.rows);
+    /*viewer.resizeCanvas(img.cols, img.rows);
     viewer.beginDrawing();
     viewer.image(img, 0, 0, img.cols, img.rows);
     ff.showResults(faces, viewer);
-    viewer.endDrawing(0);
+    viewer.endDrawing(0);*/
 
     std::vector<float> err;
     float inter_occular_dist = getInterOccularDist(annotations[i]);

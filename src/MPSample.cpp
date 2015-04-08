@@ -7,84 +7,73 @@
 
 // ----------------------- INCLUDES --------------------------------------------
 #include <MPSample.hpp>
+#include <Constants.hpp>
 #include <boost/numeric/conversion/bounds.hpp>
 
 MPSample::MPSample
   (
-  const ImageSample *image_,
-  cv::Rect rect_,
-  const cv::Rect roi_,
-  const std::vector<cv::Point> ann_parts,
-  float size_,
+  const ImageSample *sample,
+  cv::Rect patch_bbox,
+  const std::vector<cv::Point> annotation_parts,
+  float face_size,
   bool label,
   float lamda
   ) :
-    image(image_), rect(rect_), roi(roi_), size(size_)
+  m_image(sample), m_patch_bbox(patch_bbox)
 {
-  int offx = rect.width / 2;
-  int offy = rect.height / 2;
-
-  cv::Point center_patch(rect.x + offx, rect.y + offy);
-  cv::Point center_bbox(roi.x + roi.width / 2, roi.y + roi.height / 2);
-
-  num_parts = ann_parts.size();
-  dist = cv::Mat(1, num_parts, CV_32FC1, cv::Scalar::all(0.0));
-  part_offsets.resize(num_parts);
-  isPos = false;
-  for (int i=0; i < num_parts; i++)
+  cv::Point center_patch(m_patch_bbox.x+(m_patch_bbox.width/2), m_patch_bbox.y+(m_patch_bbox.height/2));
+  m_nparts = static_cast<int>(annotation_parts.size());
+  m_prob = cv::Mat(1, m_nparts, CV_32FC1, cv::Scalar::all(0.0));
+  m_part_offsets.resize(m_nparts);
+  m_is_positive = false;
+  for (int i=0; i < m_nparts; i++)
   {
-    part_offsets[i].x = (ann_parts[i].x - center_patch.x);
-    part_offsets[i].y = (ann_parts[i].y - center_patch.y);
-
-    cv::Point_<float> offset = cv::Point_<float>(part_offsets[i].x / size, part_offsets[i].y / size);
-    float norm = cv::norm(offset);
-    if (norm == 0)
-    {
-      dist.at<float>(0, i) = 1;
-    }
-    else
-    {
-      dist.at<float>(0, i) = 1 / exp(norm / lamda);
-
-      if (dist.at<float>(0, i) > 0.09)
-        isPos = true;
-    }
+    m_part_offsets[i] = annotation_parts[i] - center_patch;
+    float d = cv::norm(cv::Point_<float>(m_part_offsets[i].x/face_size, m_part_offsets[i].y/face_size));
+    // Probability goes to zero for patches that are far away from the feature points
+    m_prob.at<float>(0,i) = expf(-d/lamda);
+    if (m_prob.at<float>(0,i) > Constants::PATCH_CLOSE_TO_FEATURE)
+      m_is_positive = true;
   }
+  cv::Size bbox = m_image->m_feature_channels[0].size();
+  cv::Point center_bbox(bbox.width/2, bbox.height/2);
+  m_patch_offset = center_bbox - center_patch;
 
-  patch_offset.x = (center_bbox.x - center_patch.x);
-  patch_offset.y = (center_bbox.y - center_patch.y);
-};
-
-MPSample::MPSample
-  (
-  const ImageSample *patch_,
-  cv::Rect rect_,
-  int n_points,
-  float size_
-  ) :
-    image(patch_), rect(rect_), size(size_)
-{
-  num_parts = n_points;
-  dist = cv::Mat(1, n_points, CV_32FC1, cv::Scalar::all(0.0));
-
-  isPos = false;
-  for (int i=0; i < n_points; i++)
-  {
-    patch_offset.x = 0;
-    patch_offset.y = 0;
-    dist.at<float>(0, i) = 0;
-  }
-
-  //compute distance to face center
+  // Compute distance to face center
   distToCenter = 0;
 };
 
 MPSample::MPSample
   (
-  const ImageSample *patch_,
-  cv::Rect rect_
+  const ImageSample *sample,
+  cv::Rect patch_bbox
   ) :
-    image(patch_), rect(rect_) {};
+  m_image(sample), m_patch_bbox(patch_bbox) {};
+
+void
+MPSample::show
+  ()
+{
+  cv::Scalar white_color = cv::Scalar(255, 255, 255);
+  cv::Scalar black_color = cv::Scalar(0, 0, 0);
+  cv::Mat img = m_image->m_feature_channels[0].clone();
+  cv::imshow("Patch", img(m_patch_bbox));
+  cv::rectangle(img, m_patch_bbox, white_color);
+  if (m_is_positive)
+  {
+    cv::Point center_patch(m_patch_bbox.x+(m_patch_bbox.width/2), m_patch_bbox.y+(m_patch_bbox.height/2));
+    // Annotations points
+    for (unsigned i=0; i < m_part_offsets.size(); i++)
+    {
+      cv::Point pt = center_patch + m_part_offsets[i];
+      cv::circle(img, pt, 3, white_color);
+    }
+    cv::Point center = center_patch + m_patch_offset;
+    cv::circle(img, center, 3, black_color);
+  }
+  cv::imshow("Face", img);
+  cv::waitKey(0);
+};
 
 int
 MPSample::evalTest
@@ -92,7 +81,7 @@ MPSample::evalTest
   const Split &test
   ) const
 {
-  return image->evalTest(test.feature, rect);
+  return m_image->evalTest(test.feature, m_patch_bbox);
 };
 
 bool
@@ -109,7 +98,6 @@ MPSample::evalSplit
   (
   const std::vector<MPSample*> &setA,
   const std::vector<MPSample*> &setB,
-  const std::vector<float> &poppClasses,
   float splitMode,
   int depth
   )
@@ -143,13 +131,13 @@ MPSample::entropie_parts
   )
 {
   double n_entropy = 0;
-  double num_parts = set[0]->num_parts;
-  cv::Mat sum = set[0]->dist.clone();
+  double num_parts = set[0]->m_nparts;
+  cv::Mat sum = set[0]->m_prob.clone();
   sum.setTo(cv::Scalar::all(0.0));
 
   std::vector<MPSample*>::const_iterator itSample;
   for (itSample = set.begin(); itSample < set.end(); itSample++)
-    add(sum, (*itSample)->dist, sum);
+    add(sum, (*itSample)->m_prob, sum);
 
   sum /= static_cast<float>(set.size());float
   p;
@@ -171,7 +159,7 @@ MPSample::entropie
   std::vector<MPSample*>::const_iterator itSample;
   int p = 0;
   for (itSample = set.begin(); itSample < set.end(); ++itSample)
-    if ((*itSample)->isPos)
+    if ((*itSample)->m_is_positive)
       p += 1;
 
   double p_pos = float(p) / set.size();
@@ -191,13 +179,11 @@ MPSample::generateSplit
   const std::vector<MPSample*> &data,
   boost::mt19937 *rng,
   ForestParam fp,
-  Split &split,
-  float split_mode,
-  int depth
+  Split &split
   )
 {
   int patchSize = fp.face_size * fp.patch_size_ratio;
-  int num_feat_channels = data[0]->image->m_feature_channels.size();
+  int num_feat_channels = data[0]->m_image->m_feature_channels.size();
   split.feature.generate(patchSize, rng, num_feat_channels);
 
   split.num_thresholds = 25;
@@ -218,7 +204,7 @@ MPSample::makeLeaf
   int num_parts;
   if (set.size() > 0)
   {
-    num_parts = set[0]->part_offsets.size();
+    num_parts = set[0]->m_part_offsets.size();
   }
   else
   {
@@ -248,7 +234,7 @@ MPSample::makeLeaf
   int size = 0;
   for (itSample = set.begin(); itSample < set.end(); ++itSample)
   {
-    if ((*itSample)->isPos)
+    if ((*itSample)->m_is_positive)
       size++;
   }
 
@@ -261,10 +247,10 @@ MPSample::makeLeaf
 
       for (itSample = set.begin(); itSample < set.end(); ++itSample)
       {
-        if ((*itSample)->isPos)
+        if ((*itSample)->m_is_positive)
         {
-          sumDist += (*itSample)->dist.at<float>(0, j);
-          mean += (*itSample)->part_offsets[j];
+          sumDist += (*itSample)->m_prob.at<float>(0, j);
+          mean += (*itSample)->m_part_offsets[j];
         }
       }
       mean.x /= static_cast<int>(size);
@@ -276,10 +262,10 @@ MPSample::makeLeaf
       double var = 0.0;
       for (itSample = set.begin(); itSample < set.end(); ++itSample)
       {
-        if ((*itSample)->isPos)
+        if ((*itSample)->m_is_positive)
         {
-          int x = (*itSample)->part_offsets[j].x;
-          int y = (*itSample)->part_offsets[j].y;
+          int x = (*itSample)->m_part_offsets[j].x;
+          int y = (*itSample)->m_part_offsets[j].y;
           float dist = sqrt((x - mean.x) * (x - mean.x) + (y - mean.y) * (y - mean.y));
           var += dist;
         }
@@ -313,9 +299,9 @@ MPSample::makeLeaf
     leaf.patch_offset = cv::Point(0, 0);
     for (itSample = set.begin(); itSample < set.end(); ++itSample)
     {
-      if ((*itSample)->isPos)
+      if ((*itSample)->m_is_positive)
       {
-        leaf.patch_offset += (*itSample)->patch_offset;
+        leaf.patch_offset += (*itSample)->m_patch_offset;
       }
     }
     leaf.patch_offset.x /= static_cast<int>(size);
@@ -340,7 +326,7 @@ MPSample::calcWeightClasses
   // Count samples near the feature point
   for (itSample = set.begin(); itSample < set.end(); ++itSample)
   {
-    if ((*itSample)->isPos)
+    if ((*itSample)->m_is_positive)
     {
       size++;
     }

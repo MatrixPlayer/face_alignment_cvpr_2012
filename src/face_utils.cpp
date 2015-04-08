@@ -217,8 +217,8 @@ getFacialFeaturesVotesMT
   for (it_leaf = leafs.begin(); it_leaf < leafs.end(); it_leaf++)
   {
     CV_Assert(static_cast<int>(samples.size()) > (i_sample / num_trees));
-    int off_set_x = samples[i_sample/num_trees].rect.x + patch_size/2;
-    int off_set_y = samples[i_sample/num_trees].rect.y + patch_size/2;
+    int off_set_x = samples[i_sample/num_trees].getPatch().x + patch_size/2;
+    int off_set_y = samples[i_sample/num_trees].getPatch().y + patch_size/2;
     for (int i=0; i < num_parts; i++)
     {
       float min_pf = options.min_pf;
@@ -287,56 +287,6 @@ intersect
 };
 
 /*void
-extract_face
-  (
-  const cv::Mat& img,
-  FaceAnnotation& ann,
-  cv::Mat& face,
-  int offset_x,
-  int offset_y
-  )
-{
-  // extract face
-  cv::Rect bigbox = cv::Rect(ann.bbox.x - offset_x, ann.bbox.y - offset_y,
-      ann.bbox.width + offset_x * 2, ann.bbox.height + offset_y * 2);
-  cv::Rect facebbox = intersect(bigbox, cv::Rect(0, 0, img.cols, img.rows));
-
-  face = img(facebbox);
-  //update GT
-  for (unsigned int j = 0; j < ann.parts.size(); j++)
-  {
-    ann.parts[j].x -= (facebbox.x - ann.bbox.x);
-    ann.parts[j].y -= (facebbox.y - ann.bbox.y);
-  }
-
-  ann.bbox = facebbox;
-  ann.bbox.x = 0;
-  ann.bbox.y = 0;
-};
-
-void
-rescale_img
-  (
-  const cv::Mat &src,
-  cv::Mat &dest,
-  float scale,
-  FaceAnnotation &ann
-  )
-{
-  cv::resize(src, dest, cv::Size(src.cols * scale, src.rows * scale), 0, 0);
-
-  for (unsigned int j = 0; j < ann.parts.size(); j++)
-  {
-    ann.parts[j].x *= scale;
-    ann.parts[j].y *= scale;
-  }
-  ann.bbox.x *= scale;
-  ann.bbox.y *= scale;
-  ann.bbox.width *= scale;
-  ann.bbox.height *= scale;
-};
-
-void
 plot_face
   (
   const cv::Mat& img,

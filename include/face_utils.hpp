@@ -94,28 +94,7 @@ intersect
   const cv::Rect r2
   );
 
-// extract a region of interest
-/*void
-extract_face
-  (
-  const cv::Mat& img,
-  FaceAnnotation& ann,
-  cv::Mat& face ,
-  int offset_x,
-  int offset_y
-  );
-
-// rescale image
-void
-rescale_img
-  (
-  const cv::Mat& src,
-  cv::Mat& dest,
-  float scale,
-  FaceAnnotation& ann
-  );
-
-// displays the annotations
+/*// displays the annotations
 void
 plot_face
   (

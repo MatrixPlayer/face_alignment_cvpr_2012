@@ -10,10 +10,11 @@
 #define MP_SAMPLE_HPP
 
 // ----------------------- INCLUDES --------------------------------------------
-#include <trace.hpp>
 #include <ThresholdSplit.hpp>
 #include <ImageSample.hpp>
 #include <SplitGen.hpp>
+#include <opencv_serialization.hpp>
+
 #include <vector>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/vector.hpp>
@@ -34,27 +35,20 @@ public:
 
   MPSample
     () :
-      num_parts(0) {};
+      m_nparts(0) {};
 
+  // Training
   MPSample
     (
-    const ImageSample *patch,
-    cv::Rect rect,
-    const cv::Rect roi,
-    const std::vector<cv::Point> parts,
-    float size,
+    const ImageSample *sample,
+    cv::Rect patch_bbox,
+    const std::vector<cv::Point> annotation_parts,
+    float face_size,
     bool label,
     float lamda = 0.125
     );
 
-  MPSample
-    (
-    const ImageSample *patch,
-    cv::Rect rect,
-    int n_points,
-    float size
-    );
-
+  // Testing
   MPSample
     (
     const ImageSample *patch,
@@ -67,29 +61,7 @@ public:
 
   void
   show
-    ()
-  {
-    cv::imshow("MPSample X", image->m_feature_channels[0](rect));
-    cv::Mat face = image->m_feature_channels[0].clone();
-    cv::rectangle(face, rect, cv::Scalar(255, 255, 255, 0));
-    cv::rectangle(face, roi, cv::Scalar(255, 255, 255, 0));
-    if (isPos)
-    {
-      int patch_size = (rect.height) / 2.0;
-      for (int i = 0; i < (int) part_offsets.size(); i++)
-      {
-        int x = rect.x + patch_size + part_offsets[i].x;
-        int y = rect.y + patch_size + part_offsets[i].y;
-        cv::circle(face, cv::Point_<int>(x, y), 3, cv::Scalar(255, 255, 255, 0));
-        PRINT(i << " " << dist.at<float>(0, i));
-      }
-      int x = rect.x + patch_size + patch_offset.x;
-      int y = rect.y + patch_size + patch_offset.y;
-      cv::circle(face, cv::Point_<int>(x, y), 3, cv::Scalar(0, 0, 0, 0));
-    }
-    cv::imshow("MPSample Y", face);
-    cv::waitKey(0);
-  };
+    ();
 
   int
   evalTest
@@ -109,9 +81,7 @@ public:
     const std::vector<MPSample*> &data,
     boost::mt19937 *rng,
     ForestParam fp,
-    Split &split,
-    float split_mode,
-    int depth
+    Split &split
     );
 
   static double
@@ -119,7 +89,6 @@ public:
     (
     const std::vector<MPSample*> &setA,
     const std::vector<MPSample*>& setB,
-    const std::vector<float> &poppClasses,
     float splitMode,
     int depth
     );
@@ -189,28 +158,34 @@ public:
     return 0;
   };
 
+  cv::Rect
+  getPatch
+    ()
+  {
+    return m_patch_bbox;
+  };
+
+private:
+  const ImageSample *m_image;
+  bool m_is_positive;
+  cv::Rect m_patch_bbox;
+  cv::Point_<int> m_patch_offset;
+  int m_nparts;
+  std::vector< cv::Point_<int> > m_part_offsets;
+  cv::Mat m_prob;
   float distToCenter;
-  const ImageSample *image;
-  std::vector< cv::Point_<int> > part_offsets;
-  cv::Rect rect;
-  cv::Rect roi;
-  cv::Mat dist;
-  float size;
-  int num_parts;
-  cv::Point_<int> patch_offset;
-  bool isPos;
 
   friend class boost::serialization::access;
   template<class Archive>
   void serialize(Archive &ar, const unsigned int version)
   {
-    ar & isPos;
-    if (isPos)
+    ar & m_is_positive;
+    if (m_is_positive)
     {
-      ar & patch_offset;
-      ar & part_offsets;
-      ar & dist;
-      ar & rect;
+      ar & m_patch_offset;
+      ar & m_part_offsets;
+      ar & m_prob;
+      ar & m_patch_bbox;
       ar & distToCenter;
     }
   }

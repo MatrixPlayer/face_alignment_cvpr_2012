@@ -1,19 +1,19 @@
 ____Path to images index file
-data/imgs/index_random_subset.txt
+../../database/faces/lfw/lfw_ffd_ann.txt
 ____Path to trees
-data/trees_ffd_original
+data/trees_ffd
 ____Number of trees
-10
+20
 ____Number of tests
-100
+2500
 ____Max depth
 20
 ____Min patches per node
 20
 ____Images per class
-150
+1000
 ____Patches per image
-100
+150
 ____Face size
 125
 ____Patch size ratio

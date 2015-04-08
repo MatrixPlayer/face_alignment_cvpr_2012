@@ -110,7 +110,7 @@ FaceForest::estimateFacialFeatures
   )
 {
   int num_parts = options.num_parts;
-  std::vector < std::vector<Vote> > votes(num_parts);
+  std::vector< std::vector<Vote> > votes(num_parts);
   getFacialFeaturesVotesMT(sample, forest, face_bbox, votes, options);
 
   ffd_cordinates.clear();
