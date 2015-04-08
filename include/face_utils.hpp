@@ -94,22 +94,13 @@ intersect
   const cv::Rect r2
   );
 
-/*// displays the annotations
-void
-plot_face
-  (
-  const cv::Mat &img,
-  FaceAnnotation ann
-  );
-
 // Plots all the votes for each part from "estimateFacialFeatures"
 void
-plot_ffd_votes
+plotVotes
   (
-  const cv::Mat& face,
-  std::vector<std::vector<Vote> >& votes,
-  std::vector<cv::Point> results,
-  std::vector<cv::Point> gt
-  );*/
+  const cv::Mat &img_gray,
+  std::vector< std::vector<Vote> > &votes,
+  std::vector<cv::Point> ffd_cordinates
+  );
 
 #endif /* FACE_UTILS_HPP */

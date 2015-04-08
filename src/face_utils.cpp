@@ -29,17 +29,17 @@ loadConfigFile
     {
       PRINT("Open configuration file: " << path);
 
-      // Path to load images
+      // Path to image annotations
       std::getline(file, line);
       std::getline(file, line);
       param.image_path = line;
-      PRINT("> Path to images: " << line);
+      PRINT("> Path to image annotations: " << line);
 
       // Path load or save trees
       std::getline(file, line);
       std::getline(file, line);
       param.tree_path = line;
-      PRINT("> Paths to trees: " << line);
+      PRINT("> Path to trees: " << line);
 
       // Number of trees per forest
       std::getline(file, line);
@@ -286,68 +286,32 @@ intersect
   return intersection;
 };
 
-/*void
-plot_face
+void
+plotVotes
   (
-  const cv::Mat& img,
-  FaceAnnotation ann
+  const cv::Mat &img_gray,
+  std::vector< std::vector<Vote> > &votes,
+  std::vector<cv::Point> ffd_cordinates
   )
 {
-  cv::Mat plot = img.clone();
-  for (int i = 0; i < static_cast<int> (ann.parts.size()); i++)
+  cv::Scalar black_color(0, 0, 0);
+  cv::Scalar white_color(255, 255, 255);
+  cv::Mat face = img_gray.clone();
+  for (int i=0; i < static_cast<int>(votes.size()); i++)
   {
-    int x = ann.parts[i].x + ann.bbox.x;
-    int y = ann.parts[i].y + ann.bbox.y;
-    cv::circle(plot, cv::Point_<int>(x, y), 3, cv::Scalar(0, 0, 0, 0));
+    cv::Mat plot = cv::Mat(img_gray.cols, img_gray.rows, CV_32FC1);
+    plot.setTo(black_color);
+    for (unsigned int j=0; j < votes[i].size(); j++)
+    {
+      Vote &v = votes[i][j];
+      if ((v.pos.x > 0) && (v.pos.x < img_gray.cols) && (v.pos.y > 0) && (v.pos.y < img_gray.rows))
+        plot.at<float>(v.pos.y, v.pos.x) += v.weight;
+    }
+    if (i < static_cast<int>(ffd_cordinates.size()))
+      cv::circle(face, ffd_cordinates[i], 3, white_color);
+
+    cv::imshow("Votes", plot);
+    cv::imshow("Facial point", face);
+    cv::waitKey(0);
   }
-  cv::rectangle(plot, ann.bbox, cv::Scalar(0, 0, 255), 3);
-  cv::imshow("Face ", plot);
-  cv::waitKey(0);
 };
-
-void
-plot_ffd_votes
-  (
-  const cv::Mat& face,
-  std::vector<std::vector<Vote> > &votes,
-  std::vector<cv::Point> results,
-  std::vector<cv::Point> gt)
-{
-  int num_parts = static_cast<int> (votes.size());
-  std::vector < cv::Mat > plots;
-  cv::Mat plotFace = face.clone();
-
-  for (int i = 0; i < num_parts; i++)
-  {
-    cv::Mat plot = cv::Mat(face.cols, face.rows, CV_32FC1);
-    plot.setTo(cv::Scalar::all(0.0));
-
-    for (unsigned int j = 0; j < votes[i].size(); j++)
-    {
-      Vote& v = votes[i][j];
-      if (v.pos.x > 0 and v.pos.x < face.cols and v.pos.y > 0 and v.pos.y < face.rows)
-      {
-        plot.at<float> (v.pos.y, v.pos.x) += v.weight;
-      }
-    }
-    plots.push_back(plot);
-    if (i < static_cast<int> (results.size()))
-    {
-      int x = results[i].x;
-      int y = results[i].y;
-      cv::circle(plotFace, cv::Point_<int>(x, y), 3, cv::Scalar(255, 255, 255, 0));
-    }
-    if (i < static_cast<int> (gt.size()))
-    {
-      int x = gt[i].x;
-      int y = gt[i].y;
-      cv::circle(plotFace, cv::Point_<int>(x, y), 3, cv::Scalar(0, 0, 0, 0));
-    }
-  }
-  for (int i = 0; i < num_parts; i++)
-  {
-    cv::imshow("Plot Votes", plots[i]);
-    cv::imshow("Face results", plotFace);
-  }
-  cv::waitKey(0);
-};*/

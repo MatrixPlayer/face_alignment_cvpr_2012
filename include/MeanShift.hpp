@@ -11,6 +11,7 @@
 
 // ----------------------- INCLUDES --------------------------------------------
 #include <vector>
+#include <opencv2/core.hpp>
 
 struct MeanShiftOption
 {
@@ -37,16 +38,6 @@ public:
   ~MeanShift
     () {};
 
-  static float
-  dist_l2
-    (
-    const cv::Point a,
-    const cv::Point b
-    )
-  {
-    return sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
-  };
-
   static void
   shift
     (
@@ -68,54 +59,23 @@ public:
     float stopping_criteria
     )
   {
-    bool covergenz = false;
+    bool coverg = false;
     cv::Point_<float> mean;
     getMean(votes, mean);
 
-    for (int i=0; i < num_iterations and covergenz == false; i++)
+    for (int i=0; (i < num_iterations) && (coverg == false); i++)
     {
       cv::Point_<float> shifted_mean;
       getWeightedMean(votes, mean, kernel, shifted_mean);
 
-      if (dist_l2(shifted_mean, mean) < stopping_criteria)
-        covergenz = true;
+      if (cv::norm(shifted_mean-mean) < stopping_criteria)
+        coverg = true;
       mean = shifted_mean;
     }
     result = mean;
   };
 
 private:
-  static void
-  getWeightedMean
-    (
-    const std::vector<Vote> &votes,
-    const cv::Point_<float> mean,
-    float lamda,
-    cv::Point_<float> &shifted_mean
-    )
-  {
-    shifted_mean = cv::Point(0.0, 0.0);
-    float sum_w = 0;
-    for (unsigned int i = 0; i < votes.size(); i++)
-    {
-      if (!votes[i].check)
-        continue;
-
-      float d = dist_l2(mean, votes[i].pos);
-      d = 1.0 / exp(d / lamda);
-      float w = votes[i].weight * d;
-      shifted_mean.x += votes[i].pos.x * w;
-      shifted_mean.y += votes[i].pos.y * w;
-      sum_w += w;
-    }
-
-    if (sum_w > 0)
-    {
-      shifted_mean.x /= sum_w;
-      shifted_mean.y /= sum_w;
-    }
-  };
-
   static void
   getMean
     (
@@ -125,7 +85,7 @@ private:
   {
     mean = cv::Point(0.0, 0.0);
     float sum_w = 0;
-    for (unsigned int i = 0; i < votes.size(); i++)
+    for (unsigned int i=0; i < votes.size(); i++)
     {
       if (!votes[i].check)
         continue;
@@ -141,7 +101,38 @@ private:
       mean.x /= sum_w;
       mean.y /= sum_w;
     }
-  }
+  };
+
+  static void
+  getWeightedMean
+    (
+    const std::vector<Vote> &votes,
+    const cv::Point_<float> mean,
+    float lamda,
+    cv::Point_<float> &shifted_mean
+    )
+  {
+    shifted_mean = cv::Point(0.0, 0.0);
+    float sum_w = 0;
+    for (unsigned int i=0; i < votes.size(); i++)
+    {
+      if (!votes[i].check)
+        continue;
+
+      float d = cv::norm(mean-cv::Point_<float>(votes[i].pos));
+      d = expf(-d/lamda);
+      float w = votes[i].weight * d;
+      shifted_mean.x += votes[i].pos.x * w;
+      shifted_mean.y += votes[i].pos.y * w;
+      sum_w += w;
+    }
+
+    if (sum_w > 0)
+    {
+      shifted_mean.x /= sum_w;
+      shifted_mean.y /= sum_w;
+    }
+  };
 };
 
 #endif /* MEAN_SHIFT_HPP */

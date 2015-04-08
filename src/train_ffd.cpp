@@ -23,7 +23,7 @@
 #include <opencv2/highgui/highgui.hpp>
 
 void
-trainFeaturesTree
+trainFacialFeaturesTree
   (
   ForestParam &fp,
   std::vector<FaceAnnotation> &annotations,
@@ -154,9 +154,12 @@ main
   // Train facial-feature tree
   int idx_forest = atoi(argv[1]);
   int idx_tree = atoi(argv[2]);
-  trainFeaturesTree(fp, ann_cluster[idx_forest], idx_forest, idx_tree);
+  trainFacialFeaturesTree(fp, ann_cluster[idx_forest], idx_forest, idx_tree);
+
+  // Train facial-feature forests
   //for (unsigned i=0; i < Constants::NUM_HP_CLASSES; i++)
   //  for (int j=0; j < fp.ntrees; j++)
+  //    trainFacialFeaturesTree(fp, ann_cluster[i], i, j);
 
   return EXIT_SUCCESS;
 };

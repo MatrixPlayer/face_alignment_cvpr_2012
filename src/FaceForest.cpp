@@ -116,16 +116,10 @@ FaceForest::estimateFacialFeatures
   ffd_cordinates.clear();
   ffd_cordinates.resize(num_parts);
   MeanShiftOption ms_option;
-  for (int j = 0; j < num_parts; j++)
-    MeanShift::shift(votes[j], ffd_cordinates[j], ms_option);
+  for (int i=0; i < num_parts; i++)
+    MeanShift::shift(votes[i], ffd_cordinates[i], ms_option);
 
-  //boost::thread_pool::ThreadPool e;
-  //for (int j=0; j < num_parts; j++)
-  //  e.submit(boost::bind(&MeanShift::shift, votes[j], ffd_cordinates[j], 10, 3));
-  //e.join_all();
-
-  //std::vector<cv::Point> gt;
-  //plot_ffd_votes(sample.featureChannels[0], votes, ffd_cordinates, gt);
+  //plotVotes(sample.m_feature_channels[0], votes, ffd_cordinates);
 };
 
 void
