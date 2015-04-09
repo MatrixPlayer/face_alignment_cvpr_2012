@@ -10,12 +10,15 @@
 // ----------------------- INCLUDES --------------------------------------------
 #include <trace.hpp>
 #include <Viewer.hpp>
-#include <TreeNode.hpp>
 #include <FaceForest.hpp>
 #include <face_utils.hpp>
+
+#include <vector>
+#include <string>
+#include <cstdlib>
+#include <boost/filesystem.hpp>
 #include <opencv/highgui.h>
 #include <opencv2/highgui/highgui.hpp>
-#include <boost/filesystem.hpp>
 
 const double IMG_INPUT_WIDTH  = 640.0;
 const double IMG_INPUT_HEIGHT = 480.0;
@@ -141,16 +144,25 @@ main
     process_video_capture = true;
   }
 
-  // Initialize face forest
+  // Evaluate feature points detector
+  std::string ffd_config_file = "data/config_ffd.txt";
+  std::string headpose_config_file = "data/config_headpose.txt";
+  std::string face_cascade = "data/haarcascade_frontalface_alt.xml";
+
+  // Parse configuration files
   ForestParam hp_param, mp_param;
-  CV_Assert(loadConfigFile("data/config_headpose.txt", hp_param));
-  CV_Assert(loadConfigFile("data/config_ffd.txt", mp_param));
+  if (!loadConfigFile(headpose_config_file, hp_param))
+    return EXIT_FAILURE;
+
+  if (!loadConfigFile(ffd_config_file, mp_param))
+    return EXIT_FAILURE;
 
   FaceForestOptions ff_options;
-  ff_options.fd_option.path_face_cascade = "data/haarcascade_frontalface_alt.xml";
+  ff_options.fd_option.path_face_cascade = face_cascade;
   ff_options.hp_forest_param = hp_param;
   ff_options.mp_forest_param = mp_param;
 
+  // Initialize face forest
   FaceForest ff(ff_options);
 
   upm::Viewer viewer;

@@ -11,7 +11,7 @@
 
 // ----------------------- INCLUDES --------------------------------------------
 #include <vector>
-#include <opencv2/core.hpp>
+#include <opencv2/core/core.hpp>
 
 struct MeanShiftOption
 {
@@ -119,7 +119,7 @@ private:
       if (!votes[i].check)
         continue;
 
-      float d = cv::norm(mean-cv::Point_<float>(votes[i].pos));
+      float d = cv::norm(mean-cv::Point2f(votes[i].pos.x, votes[i].pos.y));
       d = expf(-d/lamda);
       float w = votes[i].weight * d;
       shifted_mean.x += votes[i].pos.x * w;

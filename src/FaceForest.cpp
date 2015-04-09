@@ -288,5 +288,8 @@ FaceForest::analyzeFace
 
   // Scale results
   for (unsigned i=0; i < face.ffd_cordinates.size(); i++)
-    face.ffd_cordinates[i] /= scale;
+  {
+    face.ffd_cordinates[i].x /= scale;
+    face.ffd_cordinates[i].y /= scale;
+  }
 };

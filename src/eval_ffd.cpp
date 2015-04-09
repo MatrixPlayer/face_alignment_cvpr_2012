@@ -16,7 +16,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <boost/progress.hpp>
-#include <opencv2/highgui.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 #undef VIEWER
 
@@ -48,7 +48,7 @@ evalForest
 
   #ifdef VIEWER
   upm::Viewer viewer;
-  viewer.init(0, 0, "demo");
+  viewer.init(0, 0, "eval_ffd");
   #endif
   std::vector< std::vector<float> > errors;
   boost::progress_display show_progress(annotations.size());
