@@ -22,20 +22,23 @@
  ******************************************************************************/
 struct FaceAnnotation
 {
-    std::vector<cv::Point> parts; // number of facial feature points
-    std::string url;              // path to original image
-    cv::Rect bbox;                // bounding box
-    int pose;                     // head pose
+  std::vector<cv::Point> parts; // number of facial feature points
+  std::string url;              // path to original image
+  cv::Rect bbox;                // bounding box
+  int pose;                     // head pose
 };
 
+/** ****************************************************************************
+ * @brief Patch vote for each facial feature point
+ ******************************************************************************/
 struct Vote
 {
-	Vote() :
-	    check(false) {};
+  Vote() :
+    weight(0.0f), check(false) {};
 
-	cv::Point2i pos;
-	float weight;
-	bool check;
+  cv::Point pos; // estimated feature point position
+  float weight;  // patch distance
+  bool check;    // meaningful vote
 };
 
 // Loads and parse a configuration file
@@ -61,8 +64,9 @@ getHeadPoseVotesMT
   const ImageSample &sample,
   const Forest<HeadPoseSample> &forest,
   cv::Rect face_bbox,
-  std::vector<HeadPoseLeaf*> &leafs,
-  int step_size = 5
+  float *headpose,
+  float *variance,
+  HeadPoseEstimatorOption options = HeadPoseEstimatorOption()
   );
 
 // Called from "estimateFacialFeatures"

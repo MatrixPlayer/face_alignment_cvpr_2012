@@ -68,35 +68,7 @@ FaceForest::estimateHeadPose
   float *variance
   )
 {
-  // Collect leafs
-  std::vector<HeadPoseLeaf*> leafs;
-  getHeadPoseVotesMT(sample, forest, face_bbox, leafs, options.step_size);
-
-  // Parse leaf
-  int n = 0;
-  float sum = 0,  sum_sq = 0;
-  for (unsigned int i=0; i < leafs.size(); ++i)
-  {
-    if (leafs[i]->forgound > options.min_forground_probability)
-    {
-      float m = 0;
-      for (int j=0; j < options.num_head_pose_labels; j++)
-        m += leafs[i]->hist_labels[j] * j;
-      m /= (leafs[i]->nSamples * leafs[i]->forgound);
-      sum += m;
-      sum_sq += m * m;
-      n++;
-    }
-  }
-  float mean = sum / n;
-  float var  = (sum_sq / n) - (mean * mean);
-
-  const float norm_factor = 0.05;
-  var  *= norm_factor;
-  mean -= 2;
-
-  *headpose = mean;
-  *variance = var;
+  getHeadPoseVotesMT(sample, forest, face_bbox, headpose, variance, options);
 };
 
 void
@@ -288,8 +260,5 @@ FaceForest::analyzeFace
 
   // Scale results
   for (unsigned i=0; i < face.ffd_cordinates.size(); i++)
-  {
-    face.ffd_cordinates[i].x /= scale;
-    face.ffd_cordinates[i].y /= scale;
-  }
+    face.ffd_cordinates[i] /= scale;
 };

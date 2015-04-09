@@ -28,10 +28,7 @@ public:
 
   Forest() {};
 
-  /*Forest
-    (
-    ForestParam fp
-    ) : m_forest_param(fp) {};
+  /*Forest(ForestParam fp) : m_forest_param(fp) {};
 
   Forest(const std::vector<Sample*> data, ForestParam fp, boost::mt19937* rng)
   {
@@ -60,6 +57,20 @@ public:
     return m_trees[idx];
   };
 
+  int
+  numberOfTrees
+    () const
+  {
+    return static_cast<int>(m_trees.size());
+  };
+
+  void
+  cleanForest
+    ()
+  {
+    m_trees.clear();
+  };
+
   //sends the Sample down the tree
   /*void evaluate(const Sample* f, std::vector<Leaf*>& leafs) const {
     for (unsigned int i = 0; i < numberOfTrees(); i++)
@@ -74,11 +85,8 @@ public:
     Leaf **leafs
     ) const
   {
-    for (unsigned int i=0; i < numberOfTrees(); i++)
-    {
+    for (unsigned int i=0; i < numberOfTrees(); i++, leafs++)
       m_trees[i]->evaluateMT(sample, m_trees[i]->root, leafs);
-      leafs++;
-    }
   };
 
   /*void save(std::string url, int offset = 0) {
@@ -173,20 +181,6 @@ public:
       m_trees[i]->root->collectLeafs(leafs[i]);
 
   }*/
-
-  int
-  numberOfTrees
-    () const
-  {
-    return static_cast<int>(m_trees.size());
-  };
-
-  void
-  cleanForest
-    ()
-  {
-    m_trees.clear();
-  };
 
 private:
   std::vector<Tree<Sample>*> m_trees;

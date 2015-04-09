@@ -153,17 +153,19 @@ getHeadPoseVotesMT
   const ImageSample &sample,
   const Forest<HeadPoseSample> &forest,
   cv::Rect face_bbox,
-  std::vector<HeadPoseLeaf*> &leafs,
-  int step_size
+  float *headpose,
+  float *variance,
+  HeadPoseEstimatorOption options
   )
 {
   ForestParam param = forest.getParam();
   int patch_size = param.face_size * param.patch_size_ratio;
+  // Reserve patches for dense extraction options.step_size == 1
   std::vector<HeadPoseSample> samples;
-  samples.reserve((face_bbox.width-patch_size+1) * (face_bbox.height-patch_size+1));
-  for (int x = face_bbox.x; x < face_bbox.x+face_bbox.width-patch_size; x += step_size)
+  samples.reserve((face_bbox.width-patch_size) * (face_bbox.height-patch_size));
+  for (int x = face_bbox.x; x < face_bbox.x+face_bbox.width-patch_size; x += options.step_size)
   {
-    for (int y = face_bbox.y; y < face_bbox.y+face_bbox.height-patch_size; y += step_size)
+    for (int y = face_bbox.y; y < face_bbox.y+face_bbox.height-patch_size; y += options.step_size)
     {
       cv::Rect patch_box(x, y, patch_size, patch_size);
       samples.push_back(HeadPoseSample(&sample, patch_box));
@@ -172,11 +174,38 @@ getHeadPoseVotesMT
 
   int num_treads = boost::thread::hardware_concurrency();
   boost::thread_pool::ThreadPool e(num_treads);
+  std::vector<HeadPoseLeaf*> leafs;
   int num_trees = forest.numberOfTrees();
   leafs.resize(samples.size() * num_trees);
   for (unsigned int i=0; i < samples.size(); i++)
     e.submit(boost::bind(&Forest<HeadPoseSample>::evaluateMT, forest, &samples[i], &leafs[i*num_trees]));
   e.join_all();
+
+  // Parse collected leafs
+  int n = 0;
+  float sum = 0, sum_sq = 0;
+  for (unsigned int i=0; i < leafs.size(); ++i)
+  {
+    if (leafs[i]->forgound > options.min_forground_probability)
+    {
+      float m = 0;
+      for (int j=0; j < options.num_head_pose_labels; j++)
+        m += leafs[i]->hist_labels[j] * j;
+      m /= (leafs[i]->nSamples * leafs[i]->forgound);
+      sum += m;
+      sum_sq += m * m;
+      n++;
+    }
+  }
+  float mean = sum / n;
+  float var  = (sum_sq / n) - (mean * mean);
+
+  const float norm_factor = 0.05;
+  var  *= norm_factor;
+  mean -= 2;
+
+  *headpose = mean;
+  *variance = var;
 };
 
 void
@@ -191,8 +220,9 @@ getFacialFeaturesVotesMT
 {
   ForestParam param = forest.getParam();
   int patch_size = param.face_size * param.patch_size_ratio;
+  // Reserve patches for dense extraction options.step_size == 1
   std::vector<MPSample> samples;
-  samples.reserve((face_bbox.width-patch_size+1) * (face_bbox.height-patch_size+1));
+  samples.reserve((face_bbox.width-patch_size) * (face_bbox.height-patch_size));
   for (int x = face_bbox.x; x < face_bbox.x+face_bbox.width-patch_size; x += options.step_size)
   {
     for (int y = face_bbox.y; y < face_bbox.y+face_bbox.height-patch_size; y += options.step_size)
@@ -204,37 +234,34 @@ getFacialFeaturesVotesMT
 
   int num_treads = boost::thread::hardware_concurrency();
   boost::thread_pool::ThreadPool e(num_treads);
-  int num_trees = forest.numberOfTrees();
   std::vector<MPLeaf*> leafs;
+  int num_trees = forest.numberOfTrees();
   leafs.resize(samples.size() * num_trees);
   for (unsigned int i=0; i < samples.size(); i++)
     e.submit(boost::bind(&Forest<MPSample>::evaluateMT, forest, &samples[i], &leafs[i*num_trees]));
   e.join_all();
 
-  int num_parts = static_cast<int>(votes.size());
-  std::vector<MPLeaf*>::iterator it_leaf;
+  // Parse collected leafs
   int i_sample = 0;
-  for (it_leaf = leafs.begin(); it_leaf < leafs.end(); it_leaf++)
+  for (std::vector<MPLeaf*>::iterator it_leaf = leafs.begin(); it_leaf < leafs.end(); it_leaf++)
   {
-    CV_Assert(static_cast<int>(samples.size()) > (i_sample / num_trees));
-    int off_set_x = samples[i_sample/num_trees].getPatch().x + patch_size/2;
-    int off_set_y = samples[i_sample/num_trees].getPatch().y + patch_size/2;
-    for (int i=0; i < num_parts; i++)
+    CV_Assert(static_cast<int>(samples.size()) > (i_sample/num_trees));
+    int offset_x = samples[i_sample/num_trees].getPatch().x + patch_size/2;
+    int offset_y = samples[i_sample/num_trees].getPatch().y + patch_size/2;
+    for (unsigned int i=0; i < votes.size(); i++)
     {
       float min_pf = options.min_pf;
-      if (i == 0 || i == 7)
+      if (i == 0 || i == 7) // probability in outer eye parts
         min_pf *= 1.5;
 
-      if ((*it_leaf)->forgound > options.min_forground &&
-          (*it_leaf)->pF[i] > min_pf &&
-          (*it_leaf)->variance[i] < options.max_variance &&
-          (*it_leaf)->nSamples > options.min_samples)
+      if ((*it_leaf)->forgound > options.min_forground && (*it_leaf)->pF[i] > min_pf &&
+          (*it_leaf)->variance[i] < options.max_variance && (*it_leaf)->nSamples > options.min_samples)
       {
         Vote v;
-        v.pos.x = (*it_leaf)->parts_offset[i].x + off_set_x;
-        v.pos.y = (*it_leaf)->parts_offset[i].y + off_set_y;
+        v.pos.x  = (*it_leaf)->parts_offset[i].x + offset_x;
+        v.pos.y  = (*it_leaf)->parts_offset[i].y + offset_y;
         v.weight = (*it_leaf)->forgound;
-        v.check = true;
+        v.check  = true;
         votes[i].push_back(v);
       }
     }
