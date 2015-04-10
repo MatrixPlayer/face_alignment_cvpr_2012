@@ -32,7 +32,7 @@ MPSample::MPSample
     float d = cv::norm(cv::Point_<float>(m_part_offsets[i].x/face_size, m_part_offsets[i].y/face_size));
     // Probability goes to zero for patches that are far away from the feature points
     m_prob.at<float>(0,i) = expf(-d/lamda);
-    if (m_prob.at<float>(0,i) > Constants::PATCH_CLOSE_TO_FEATURE)
+    if (m_prob.at<float>(0,i) > PATCH_CLOSE_TO_FEATURE)
       m_is_positive = true;
   }
   cv::Size bbox = m_image->m_feature_channels[0].size();

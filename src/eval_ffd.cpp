@@ -18,7 +18,7 @@
 #include <boost/progress.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-#undef VIEWER
+#define VIEWER
 
 // The distance between the eyes
 float

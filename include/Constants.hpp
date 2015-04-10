@@ -66,16 +66,11 @@ struct ForestParam
 };
 
 /** ****************************************************************************
- * @class Constants
  * @brief Class identifiers used by the computer vision algorithms
  ******************************************************************************/
-class Constants
-{
-public:
-  static const unsigned NUM_HP_CLASSES = 5;
-  static const unsigned MAX_NEG_ATTEMPTS = 100;
-  static const float NEG_PATCHES_RATIO = 0.2f;
-  static const float PATCH_CLOSE_TO_FEATURE = 0.09f;
-};
+static const unsigned NUM_HP_CLASSES1 = 5;
+static const unsigned MAX_NEG_ATTEMPTS1 = 100;
+static const float NEG_PATCHES_RATIO1 = 0.2f;
+static const float PATCH_CLOSE_TO_FEATURE = 0.09f;
 
 #endif /* CONSTANTS_HPP */
