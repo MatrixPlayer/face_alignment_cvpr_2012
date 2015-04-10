@@ -76,7 +76,7 @@ trainFacialFeaturesTree
     annotations[i].bbox.y *= scale;
     annotations[i].bbox.width *= scale;
     annotations[i].bbox.height *= scale;
-    for (unsigned j=0; j < annotations[i].parts.size(); j++)
+    for (unsigned int j=0; j < annotations[i].parts.size(); j++)
       annotations[i].parts[j] *= scale;
 
     // Enlarge by 20% to make sure that all facial features are enclosed
@@ -89,7 +89,7 @@ trainFacialFeaturesTree
     annotations[i].bbox.y = 0;
     annotations[i].bbox.width = face_bbox.width;
     annotations[i].bbox.height = face_bbox.height;
-    for (unsigned j=0; j < annotations[i].parts.size(); j++)
+    for (unsigned int j=0; j < annotations[i].parts.size(); j++)
     {
       annotations[i].parts[j].x += offset_x;
       annotations[i].parts[j].y += offset_y;

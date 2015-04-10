@@ -41,6 +41,31 @@ struct Vote
   bool check;    // meaningful vote
 };
 
+// Load image from annotations file
+cv::Mat
+loadImage
+  (
+  std::string path,
+  std::string name
+  );
+
+// Scale image and annotations for training
+cv::Mat
+scale
+  (
+  cv::Mat img,
+  int face_size,
+  FaceAnnotation &annotation
+  );
+
+// Enlarge image and annotations by 20% for training
+cv::Mat
+enlarge
+  (
+  cv::Mat img,
+  FaceAnnotation &annotation
+  );
+
 // Loads and parse a configuration file
 bool
 loadConfigFile

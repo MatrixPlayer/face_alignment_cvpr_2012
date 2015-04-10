@@ -9,17 +9,28 @@
 
 // ----------------------- INCLUDES --------------------------------------------
 #include <trace.hpp>
-#include <Constants.hpp>
-#include <face_utils.hpp>
 #include <Viewer.hpp>
 #include <FaceForest.hpp>
+#include <face_utils.hpp>
 
 #include <vector>
 #include <string>
+#include <cstdlib>
 #include <fstream>
 #include <boost/progress.hpp>
 #include <opencv2/opencv.hpp>
 
+#undef VIEWER
+
+// -----------------------------------------------------------------------------
+//
+// Purpose and Method:
+// Inputs:
+// Outputs:
+// Dependencies:
+// Restrictions and Caveats:
+//
+// -----------------------------------------------------------------------------
 void
 evalForest
   (
@@ -30,28 +41,27 @@ evalForest
   // Initialize face forest
   FaceForest ff(ff_options);
 
+  #ifdef VIEWER
   upm::Viewer viewer;
-  viewer.init(0, 0, "demo");
+  viewer.init(0, 0, "eval_headpose");
+  #endif
   boost::progress_display show_progress(annotations.size());
   for (int i=0; i < static_cast<int>(annotations.size()); i++, ++show_progress)
   {
-    PRINT("Evaluate image: " << annotations[i].url);
-
     // Load image
-    cv::Mat img = cv::imread(annotations[i].url, cv::IMREAD_COLOR);
+    TRACE("Evaluate image: " << annotations[i].url);
+    cv::Mat img = loadImage(ff_options.mp_forest_param.image_path, annotations[i].url);
     if (img.empty())
     {
       ERROR("Could not load: " << annotations[i].url);
       continue;
     }
 
-    // Convert image to gray scale
-    cv::Mat img_gray;
-    cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
-
-    std::vector<Face> faces;
     Face face;
-    ff.analyzeFace(img_gray, annotations[i].bbox, face);
+    ff.analyzeFace(img, annotations[i].bbox, face);
+
+    #ifdef VIEWER
+    std::vector<Face> faces;
     faces.push_back(face);
 
     // Draw results
@@ -59,8 +69,10 @@ evalForest
     viewer.beginDrawing();
     viewer.image(img, 0, 0, img.cols, img.rows);
     ff.showResults(faces, viewer);
-    PRINT("Head-pose: predict=" << face.headpose << " real=" << annotations[i].pose);
     viewer.endDrawing(0);
+    #endif
+
+    TRACE("Real:" << annotations[i].pose << " Predict:" << face.headpose);
   }
 };
 

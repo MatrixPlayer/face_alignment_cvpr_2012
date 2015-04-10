@@ -8,20 +8,13 @@ This package contains the source code for training and evaluation of the
 Conditional Regression Forest. Additional to the source code you can find pretrained trees for head pose estimation and also for facial feature detection. 
 
 ### Building
-This framework needs the open source computer vision library OpenCV 3.0 and Boost 1.55.
+This framework needs the open source computer vision library OpenCV 2.4.9 and Boost 1.55.0
 
 ### Demo Application
 Running the demo application using the pretrained trees is easy.
 ```
-./demo 0 data/config_ffd.txt data/config_headpose.txt data/haarcascade_frontalface_alt.xml
+./demo mode (0=training, 1=evaluate)
 ```
-
-You need to set 4 flags: 
- - mode (0=training, 1=evaluate)
- - path to facial-feature-detection config file
- - path to head-pose config file
- - path to face cascade
-
 <p align="center">
   <img src="http://blog.gimiatlicho.webfactional.com/wp-content/uploads/2012/06/result_web.jpg" alt="Alignment"/>
 </p>

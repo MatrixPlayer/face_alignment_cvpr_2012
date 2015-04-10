@@ -13,6 +13,64 @@
 #include <boost/iostreams/device/file.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+cv::Mat
+loadImage
+  (
+  std::string path,
+  std::string name
+  )
+{
+  std::size_t pos = path.rfind("/") + 1;
+  std::string filename = path.substr(0,pos) + name;
+  return cv::imread(filename, cv::IMREAD_COLOR);
+};
+
+cv::Mat
+scale
+  (
+  cv::Mat img,
+  int face_size,
+  FaceAnnotation &annotation
+  )
+{
+  float scale = static_cast<float>(face_size)/static_cast<float>(annotation.bbox.width);
+  annotation.bbox.x *= scale;
+  annotation.bbox.y *= scale;
+  annotation.bbox.width *= scale;
+  annotation.bbox.height *= scale;
+  for (unsigned int i=0; i < annotation.parts.size(); i++)
+    annotation.parts[i] *= scale;
+
+  cv::Mat img_scaled;
+  cv::resize(img, img_scaled, cv::Size(img.cols*scale, img.rows*scale), 0, 0);
+  return img_scaled;
+};
+
+cv::Mat
+enlarge
+  (
+  cv::Mat img,
+  FaceAnnotation &annotation
+  )
+{
+  int offset_x = annotation.bbox.width * 0.1;
+  int offset_y = annotation.bbox.height * 0.1;
+  cv::Rect aux = cv::Rect(annotation.bbox.x-offset_x, annotation.bbox.y-offset_y,
+                          annotation.bbox.width+(offset_x*2), annotation.bbox.height+(offset_y*2));
+  cv::Rect enlarge_bbox = intersect(aux, cv::Rect(0,0,img.cols,img.rows));
+  annotation.bbox.x = 0;
+  annotation.bbox.y = 0;
+  annotation.bbox.width = enlarge_bbox.width;
+  annotation.bbox.height = enlarge_bbox.height;
+  for (unsigned int i=0; i < annotation.parts.size(); i++)
+  {
+    annotation.parts[i].x += offset_x;
+    annotation.parts[i].y += offset_y;
+  }
+  return img(enlarge_bbox);
+};
 
 bool
 loadConfigFile

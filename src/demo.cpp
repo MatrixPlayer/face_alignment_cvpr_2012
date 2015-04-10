@@ -8,15 +8,102 @@
 // ----------------------- INCLUDES --------------------------------------------
 #include <trace.hpp>
 #include <Viewer.hpp>
-#include <SplitGen.hpp>
 #include <FaceForest.hpp>
 #include <face_utils.hpp>
+
 #include <vector>
+#include <string>
 #include <cstdlib>
-#include <opencv2/imgproc/imgproc.hpp>
 #include <boost/progress.hpp>
 #include <boost/lexical_cast.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
+// -----------------------------------------------------------------------------
+//
+// Purpose and Method:
+// Inputs:
+// Outputs:
+// Dependencies:
+// Restrictions and Caveats:
+//
+// -----------------------------------------------------------------------------
+void
+trainTree
+  (
+  ForestParam mp_param,
+  std::vector<FaceAnnotation> &annotations
+  )
+{
+  int idx_tree = 99;
+  srand(idx_tree+1);
+  std::random_shuffle(annotations.begin(), annotations.end());
+
+  std::vector<MPSample*> mp_samples;
+  mp_samples.reserve(mp_param.nimages*mp_param.npatches);
+  PRINT("Total number of images: " << mp_param.nimages);
+  PRINT("Reserved patches: " << mp_param.nimages*mp_param.npatches);
+
+  boost::mt19937 rng;
+  rng.seed(idx_tree+1);
+  boost::progress_display show_progress(mp_param.nimages);
+  for (int i=0; i < mp_param.nimages; i++, ++show_progress)
+  {
+    // Load image
+    TRACE("Evaluate image: " << annotations[i].url);
+    cv::Mat img = loadImage(mp_param.image_path, annotations[i].url);
+    if (img.empty())
+    {
+      ERROR("Could not load: " << annotations[i].url);
+      continue;
+    }
+
+    // Convert to gray-scale
+    cv::Mat img_gray;
+    cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
+
+    // Scale image and annotations (125 x 125)
+    cv::Mat img_scaled = scale(img_gray, mp_param.face_size, annotations[i]);
+
+    // Enlarge image to make sure that all facial features are enclosed (149 x 149)
+    cv::Mat img_enlarged = enlarge(img_scaled, annotations[i]);
+
+    // Normalize histogram
+    cv::Mat img_face;
+    cv::equalizeHist(img_enlarged, img_face);
+
+    // Create image sample
+    ImageSample *sample = new ImageSample(img_face, mp_param.features, false);
+
+    // Extract positive patches
+    int patch_size = mp_param.patchSize();
+    boost::uniform_int<> dist_x(1, img_face.cols-patch_size-2);
+    boost::uniform_int<> dist_y(1, img_face.rows-patch_size-2);
+    boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_x(rng, dist_x);
+    boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_y(rng, dist_y);
+    for (int j=0; j < mp_param.npatches; j++)
+    {
+      cv::Rect bbox = cv::Rect(rand_x(), rand_y(), patch_size, patch_size);
+      MPSample *mps = new MPSample(sample, bbox, annotations[i].parts, mp_param.face_size, true);
+      mp_samples.push_back(mps);
+      mps->show();
+    }
+  }
+  PRINT("Used patches: " << mp_samples.size());
+
+  char tree_path[200];
+  sprintf(tree_path, "%s/tree_%03d.txt", mp_param.tree_path.c_str(), idx_tree);
+  Tree<MPSample> *tree = new Tree<MPSample>(mp_samples, mp_param, &rng, tree_path);
+};
+
+// -----------------------------------------------------------------------------
+//
+// Purpose and Method:
+// Inputs:
+// Outputs:
+// Dependencies:
+// Restrictions and Caveats:
+//
+// -----------------------------------------------------------------------------
 void
 evalForest
   (
@@ -26,47 +113,53 @@ evalForest
 {
   // Initialize face forest
   FaceForest ff(ff_options);
+
   upm::Viewer viewer;
   viewer.init(0, 0, "demo");
 
-  for (int i=0; i < static_cast<int>(annotations.size()); ++i)
+  boost::progress_display show_progress(annotations.size());
+  for (int i=0; i < static_cast<int>(annotations.size()); ++i, ++show_progress)
   {
-    PRINT("Evaluate image: " << annotations[i].url);
-
     // Load image
-    cv::Mat image = cv::imread(annotations[i].url, cv::IMREAD_COLOR);
-    if (image.data == NULL)
+    TRACE("Evaluate image: " << annotations[i].url);
+    cv::Mat img = loadImage(ff_options.mp_forest_param.image_path, annotations[i].url);
+    if (img.empty())
     {
       ERROR("Could not load: " << annotations[i].url);
       continue;
     }
-
-    // Convert image to gray scale
-    cv::Mat img_gray;
-    cv::cvtColor(image, img_gray, cv::COLOR_BGR2GRAY);
 
     std::vector<Face> faces;
     const bool use_predefined_bbox = false;
     if (use_predefined_bbox)
     {
       Face face;
-      ff.analyzeFace(img_gray, annotations[i].bbox, face);
+      ff.analyzeFace(img, annotations[i].bbox, face);
       faces.push_back(face);
     }
     else
     {
-      ff.analyzeImage(img_gray, faces);
+      ff.analyzeImage(img, faces);
     }
 
     // Draw results
-    viewer.resizeCanvas(image.cols, image.rows);
+    viewer.resizeCanvas(img.cols, img.rows);
     viewer.beginDrawing();
-    viewer.image(image, 0, 0, image.cols, image.rows);
-    ff.showResults(img_gray, faces, viewer);
+    viewer.image(img, 0, 0, img.cols, img.rows);
+    ff.showResults(faces, viewer);
     viewer.endDrawing(0);
   }
 };
 
+// -----------------------------------------------------------------------------
+//
+// Purpose and Method:
+// Inputs:
+// Outputs:
+// Dependencies:
+// Restrictions and Caveats:
+//
+// -----------------------------------------------------------------------------
 int
 main
   (
@@ -74,34 +167,14 @@ main
   char **argv
   )
 {
-  // Usage: 1 config_ffd.txt config_headpose.txt haarcascade_frontalface.xml
-  if (argc < 3)
-  {
-    PRINT("Usage: mode ffd_config headpose_config face_xml");
-    PRINT("Using default parameters ...");
-  }
-
-  // Mode 0: training forest
-  // Mode 1: evaluate point detector
-  int mode = 1;
+  // 0 - training a tree
+  // 1 - evaluate feature points detector
   std::string ffd_config_file = "data/config_ffd.txt";
   std::string headpose_config_file = "data/config_headpose.txt";
   std::string face_cascade = "data/haarcascade_frontalface_alt.xml";
-  if (argc > 3)
-  {
-    try
-    {
-      mode = boost::lexical_cast<int>(argv[1]);
-      ffd_config_file = argv[2];
-      headpose_config_file = argv[3];
-      face_cascade = argv[4];
-    }
-    catch (char *err)
-    {
-      ERROR("Error during flag parsing: " << err);
-      return EXIT_FAILURE;
-    }
-  }
+  int mode = 1;
+  if (argc == 2)
+    mode = boost::lexical_cast<int>(argv[1]);
 
   // Parse configuration file
   ForestParam mp_param;
@@ -117,7 +190,7 @@ main
   {
     case 0:
     {
-      //trainForest(mp_param, annotations);
+      trainTree(mp_param, annotations);
       break;
     }
     case 1:

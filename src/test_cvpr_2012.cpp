@@ -95,9 +95,7 @@ main
   char **argv
   )
 {
-  // ---------------------------------------------------------------------------
   // Determine if we get the images from a camera or a video
-  // ---------------------------------------------------------------------------
   cv::Mat frame;
   cv::VideoCapture capture;
   bool process_image_file    = false;

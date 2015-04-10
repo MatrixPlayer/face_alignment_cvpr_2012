@@ -16,11 +16,19 @@
 #include <cstdlib>
 #include <fstream>
 #include <boost/progress.hpp>
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/opencv.hpp>
 
-#define VIEWER
+#undef VIEWER
 
-// The distance between the eyes
+// -----------------------------------------------------------------------------
+//
+// Purpose and Method: Distance between the eyes
+// Inputs:
+// Outputs:
+// Dependencies:
+// Restrictions and Caveats:
+//
+// -----------------------------------------------------------------------------
 float
 getInterOccularDist
   (
@@ -36,6 +44,15 @@ getInterOccularDist
   return cv::norm(center_left-center_right);
 };
 
+// -----------------------------------------------------------------------------
+//
+// Purpose and Method:
+// Inputs:
+// Outputs:
+// Dependencies:
+// Restrictions and Caveats:
+//
+// -----------------------------------------------------------------------------
 void
 evalForest
   (
@@ -54,13 +71,9 @@ evalForest
   boost::progress_display show_progress(annotations.size());
   for (int i=0; i < static_cast<int>(annotations.size()); ++i, ++show_progress)
   {
-    TRACE("Evaluate image: " << annotations[i].url);
-
     // Load image
-    std::string dir = ff_options.mp_forest_param.image_path;
-    std::size_t pos = dir.rfind("/")+1;
-    std::string img_path = dir.substr(0,pos) + annotations[i].url;
-    cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
+    TRACE("Evaluate image: " << annotations[i].url);
+    cv::Mat img = loadImage(ff_options.mp_forest_param.image_path, annotations[i].url);
     if (img.empty())
     {
       ERROR("Could not load: " << annotations[i].url);
@@ -103,6 +116,15 @@ evalForest
   }
 };
 
+// -----------------------------------------------------------------------------
+//
+// Purpose and Method:
+// Inputs:
+// Outputs:
+// Dependencies:
+// Restrictions and Caveats:
+//
+// -----------------------------------------------------------------------------
 int
 main
   (
