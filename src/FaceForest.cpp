@@ -206,11 +206,7 @@ FaceForest::analyzeFace
     cv::equalizeHist(img_face, img_face);
 
   // Create image sample
-  Timing timer;
-  timer.start();
   ImageSample sample(img_face, m_options.hp_forest_param.features, fcf, true);
-  TRACE("Creating image sample: " << timer.elapsed());
-  timer.restart();
 
   /// Estimate head-pose
   float headpose = 0, variance = 0;

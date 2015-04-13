@@ -16,6 +16,9 @@
 #include <cstdlib>
 #include <boost/progress.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int.hpp>
+#include <boost/random/variate_generator.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
 // -----------------------------------------------------------------------------

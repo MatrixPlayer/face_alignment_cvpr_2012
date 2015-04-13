@@ -29,7 +29,6 @@ INCLUDE_DIRECTORIES(
 ADD_EXECUTABLE(test_cvpr_2012
     ${CMAKE_SOURCE_DIR}/include/trace.hpp
     ${CMAKE_SOURCE_DIR}/include/ThreadPool.hpp
-    ${CMAKE_SOURCE_DIR}/include/Timing.hpp
     ${CMAKE_SOURCE_DIR}/include/Constants.hpp
     ${CMAKE_SOURCE_DIR}/include/Viewer.hpp
     ${CMAKE_SOURCE_DIR}/src/Viewer.cpp
@@ -56,8 +55,8 @@ ADD_EXECUTABLE(test_cvpr_2012
     #${CMAKE_SOURCE_DIR}/src/demo.cpp
     #${CMAKE_SOURCE_DIR}/src/train_headpose.cpp
     #${CMAKE_SOURCE_DIR}/src/eval_headpose.cpp
-    ${CMAKE_SOURCE_DIR}/src/train_ffd.cpp
-    #${CMAKE_SOURCE_DIR}/src/eval_ffd.cpp
+    #${CMAKE_SOURCE_DIR}/src/train_ffd.cpp
+    ${CMAKE_SOURCE_DIR}/src/eval_ffd.cpp
 )
 
 #-- Link the executable to the libraries

@@ -139,10 +139,7 @@ public:
     if (!Tree<Sample>::load(&tree, url))
       return false;
 
-    trees.push_back(tree);
-    return true;
-
-    /*if (tree->isFinished())
+    if (tree->isFinished())
     {
       trees.push_back(tree);
       return true;
@@ -152,7 +149,7 @@ public:
       PRINT("  Tree is not finished successfully")
       delete tree;
       return false;
-    }*/
+    }
   };
 
   void
