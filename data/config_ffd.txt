@@ -11,7 +11,7 @@ ____Max depth
 ____Min patches per node
 20
 ____Images per class
-1000
+2500
 ____Patches per image
 150
 ____Face size

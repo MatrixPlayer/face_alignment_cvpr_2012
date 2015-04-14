@@ -50,7 +50,6 @@ public:
 
   Feature feature;
   double info;
-  double gain;
   double oob;
   int threshold;
   int margin;
@@ -64,7 +63,6 @@ public:
   {
     ar & feature;
     ar & info;
-    ar & gain;
     ar & threshold;
   }
 };

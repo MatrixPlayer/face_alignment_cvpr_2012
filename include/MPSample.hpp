@@ -63,54 +63,58 @@ public:
   show
     ();
 
+  // Used from SplitGen "generateMT"
   int
   evalTest
     (
     const Split &test
     ) const;
 
+  // Called from "evaluateMT" on TreeNode
   bool
   eval
     (
     const Split &test
     ) const;
 
+  // Called from SplitGen "generateMT"
   static bool
   generateSplit
     (
-    const std::vector<MPSample*> &data,
+    const std::vector<MPSample*> &samples,
     boost::mt19937 *rng,
-    ForestParam fp,
+    int patch_size,
     Split &split
     );
 
+  // Called from SplitGen "findThreshold"
   static double
   evalSplit
     (
     const std::vector<MPSample*> &setA,
-    const std::vector<MPSample*>& setB,
-    float splitMode,
-    int depth
-    );
-
-  static void
-  optimize
-    (
-    boost::mt19937 *rng,
-    const std::vector<MPSample*> &set,
-    Split &split,
+    const std::vector<MPSample*> &setB,
     float split_mode,
     int depth
     );
 
-  inline static double
-  entropie
+  // Called from TreeNode "createLeaf"
+  static void
+  makeLeaf
     (
-    const std::vector<MPSample*> &set
+    MPLeaf &leaf,
+    const std::vector<MPSample*> &samples
     );
 
+  cv::Rect
+  getPatch
+    ()
+  {
+    return m_patch_bbox;
+  };
+
+private:
   inline static double
-  entropie_pose
+  entropie
     (
     const std::vector<MPSample*> &set
     );
@@ -121,51 +125,6 @@ public:
     const std::vector<MPSample*> &set
     );
 
-  inline static double
-  infoGain
-    (
-    const std::vector<MPSample*> &set
-    );
-
-  static void
-  makeLeaf
-    (
-    MPLeaf &leaf,
-    const std::vector<MPSample*> &set,
-    const std::vector<float> &poppClasses,
-    int leaf_id = 0
-    );
-
-  static void
-  calcWeightClasses
-    (
-    std::vector<float> &poppClasses,
-    const std::vector<MPSample*> &set
-    );
-
-  static double
-  entropieFaceOrNot
-    (
-    const std::vector<MPSample*> &set
-    );
-
-  static double
-  eval_oob
-    (
-    const std::vector<MPSample*> &data, Split &test
-    )
-  {
-    return 0;
-  };
-
-  cv::Rect
-  getPatch
-    ()
-  {
-    return m_patch_bbox;
-  };
-
-private:
   const ImageSample *m_image;
   bool m_is_positive;
   cv::Rect m_patch_bbox;

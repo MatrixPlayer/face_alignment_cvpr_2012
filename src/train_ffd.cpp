@@ -27,7 +27,7 @@ trainTree
   (
   ForestParam mp_param,
   std::vector<FaceAnnotation> &annotations,
-  unsigned idx_forest,
+  int idx_forest,
   int idx_tree
   )
 {
@@ -41,15 +41,34 @@ trainTree
   Tree<MPSample> *tree;
   bool is_tree_load = Tree<MPSample>::load(&tree, tree_path);
 
+  // Separate annotations by head-pose classes
+  std::vector< std::vector<FaceAnnotation> > cluster(NUM_HEADPOSE_CLASSES);
+  for (unsigned int i=0; i < annotations.size(); i++)
+  {
+    int label = annotations[i].pose + 2;
+    cluster[label].push_back(annotations[i]);
+  }
+
+  // Estimate the number of images available for each class
+  int imgs_per_class = mp_param.nimages;
+  for (unsigned int i=0; i < cluster.size(); i++)
+    imgs_per_class = std::min(imgs_per_class, static_cast<int>(cluster[i].size()));
+  PRINT("Number of images per class: " << imgs_per_class);
+
+  // Only annotations filtered by head pose
+  annotations.clear();
+  for (int i=0; i < imgs_per_class; i++)
+    annotations.push_back(cluster[idx_forest][i]);
+
   std::vector<MPSample*> mp_samples;
-  mp_samples.reserve(mp_param.nimages*mp_param.npatches);
-  PRINT("Total number of images: " << mp_param.nimages);
-  PRINT("Reserved patches: " << mp_param.nimages*mp_param.npatches);
+  mp_samples.reserve(annotations.size()*mp_param.npatches);
+  PRINT("Total number of images: " << annotations.size());
+  PRINT("Reserved patches: " << annotations.size()*mp_param.npatches);
 
   boost::mt19937 rng;
   rng.seed(idx_tree+1);
-  boost::progress_display show_progress(mp_param.nimages);
-  for (int i=0; i < mp_param.nimages; i++, ++show_progress)
+  boost::progress_display show_progress(annotations.size());
+  for (int i=0; i < annotations.size(); i++, ++show_progress)
   {
     // Load image
     TRACE("Evaluate image: " << annotations[i].url);
@@ -64,7 +83,7 @@ trainTree
     cv::Mat img_gray;
     cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
 
-    // Scale image and annotations (125 x 125)
+    // Scale image and annotations
     cv::Mat img_scaled = scale(img_gray, mp_param.face_size, annotations[i]);
 
     // Enlarge image to make sure that all facial features are enclosed (149 x 149)
@@ -78,7 +97,7 @@ trainTree
     ImageSample *sample = new ImageSample(img_face, mp_param.features, false);
 
     // Extract positive patches
-    int patch_size = mp_param.patchSize();
+    int patch_size = mp_param.getPatchSize();
     boost::uniform_int<> dist_x(1, img_face.cols-patch_size-2);
     boost::uniform_int<> dist_y(1, img_face.rows-patch_size-2);
     boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_x(rng, dist_x);
@@ -118,19 +137,10 @@ main
   if (!loadAnnotations(mp_param.image_path, annotations))
     return EXIT_FAILURE;
 
-  // Separate annotations by head-pose classes
-  std::vector< std::vector<FaceAnnotation> > cluster(NUM_HEADPOSE_CLASSES);
-  for (unsigned int i=0; i < annotations.size(); i++)
-  {
-    // Range is between -2 and +2 but we shift it to 0 - 5
-    int label = annotations[i].pose + 2;
-    cluster[label].push_back(annotations[i]);
-  }
-
   // Train facial-feature tree
   int idx_forest = atoi(argv[1]);
   int idx_tree = atoi(argv[2]);
-  trainTree(mp_param, cluster[idx_forest], idx_forest, idx_tree);
+  trainTree(mp_param, annotations, idx_forest, idx_tree);
 
   // Train facial-feature forests
   //for (unsigned int i=0; i < NUM_HEADPOSE_CLASSES; i++)

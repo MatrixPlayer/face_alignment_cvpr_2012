@@ -50,11 +50,10 @@ HeadPoseSample::generateSplit
   (
   const std::vector<HeadPoseSample*> &samples,
   boost::mt19937 *rng,
-  ForestParam fp,
+  int patch_size,
   Split &split
   )
 {
-  int patch_size = static_cast<int>(floor(fp.face_size * fp.patch_size_ratio)); // 125 * 0.25 = 31.25
   int num_feature_channels = samples[0]->m_image->m_feature_channels.size();
   split.feature.generate(patch_size, rng, num_feature_channels);
   split.num_thresholds = 25;
@@ -92,60 +91,33 @@ void
 HeadPoseSample::makeLeaf
   (
   HeadPoseLeaf &leaf,
-  const std::vector<HeadPoseSample*> &set,
-  const std::vector<float> &poppClasses,
-  int leaf_id
+  const std::vector<HeadPoseSample*> &set
   )
 {
-  // Count number of foreground samples
-  int size = 0;
+  int size = 0; // number of foreground samples
   std::vector<HeadPoseSample*>::const_iterator it_sample;
   for (it_sample = set.begin(); it_sample < set.end(); ++it_sample)
     if ((*it_sample)->m_is_positive)
       size++;
 
-  leaf.forgound = size / static_cast<float>(set.size());
-  leaf.nSamples = set.size();
-  leaf.hist_labels.clear();
-  leaf.hist_labels.resize(5, 0);
+  leaf.hp_foreground = static_cast<float>(size) / static_cast<float>(set.size());
+  leaf.hp_nsamples = set.size();
+  leaf.hp_labels.clear();
+  leaf.hp_labels.resize(NUM_HEADPOSE_CLASSES, 0);
   if (size > 0)
   {
     for (it_sample = set.begin(); it_sample < set.end(); ++it_sample)
       if ((*it_sample)->m_is_positive)
-        leaf.hist_labels[(*it_sample)->m_label]++;
+        leaf.hp_labels[(*it_sample)->m_label]++;
 
-    PRINT("  Histogram: " << cv::Mat(leaf.hist_labels).t());
+    PRINT("  Histogram: " << cv::Mat(leaf.hp_labels).t());
   }
   else
   {
     PRINT("  Leaf with only background patches: " << set.size());
-    for (unsigned int i=0; i < leaf.hist_labels.size(); i++)
-      leaf.hist_labels[i] = 0;
+    for (unsigned int i=0; i < leaf.hp_labels.size(); i++)
+      leaf.hp_labels[i] = 0;
   }
-};
-
-void
-HeadPoseSample::calcWeightClasses
-  (
-  std::vector<float> &class_weights,
-  const std::vector<HeadPoseSample*> &samples
-  )
-{
-  class_weights.resize(5, 0);
-  int size = 0;
-  std::vector<HeadPoseSample*>::const_iterator it;
-  for (it = samples.begin(); it < samples.end(); ++it)
-  {
-    if ((*it)->m_is_positive)
-    {
-      size++;
-      class_weights[(*it)->m_label]++;
-    }
-  }
-  for (unsigned int i=0; i < class_weights.size(); i++)
-    class_weights[i] /= size;
-
-  PRINT("Classes weights: " << cv::Mat(class_weights).t());
 };
 
 double

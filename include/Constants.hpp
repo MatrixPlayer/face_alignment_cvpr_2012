@@ -24,9 +24,9 @@
 struct ForestParam
 {
   int
-  patchSize()
+  getPatchSize()
   {
-    return static_cast<int>(face_size*patch_size_ratio);
+    return static_cast<int>(round(face_size*patch_size_ratio));
   };
 
   int max_depth;   // tree stopping criteria
@@ -36,12 +36,9 @@ struct ForestParam
   int nimages;     // number of images per class
   int npatches;    // number of patches per image
   int face_size;   // face size in pixels
-  int measure_mode;
-  int nchannels;
   float patch_size_ratio;    // patch size ratio
   std::string tree_path;     // path to load or save the trees
   std::string image_path;    // path to load images
-  std::string feature_path;
   std::vector<int> features; // feature channels
 
   friend class boost::serialization::access;
@@ -55,12 +52,9 @@ struct ForestParam
     ar & nimages;
     ar & npatches;
     ar & face_size;
-    ar & measure_mode;
-    ar & nchannels;
     ar & patch_size_ratio;
     ar & tree_path;
     ar & image_path;
-    ar & feature_path;
     ar & features;
   }
 };
@@ -68,9 +62,7 @@ struct ForestParam
 /** ****************************************************************************
  * @brief Class identifiers used by the computer vision algorithms
  ******************************************************************************/
-static const unsigned NUM_HEADPOSE_CLASSES = 5;
-static const unsigned MAX_NEG_ATTEMPTS1 = 100;
-static const float NEG_PATCHES_RATIO1 = 0.2f;
+static const int NUM_HEADPOSE_CLASSES = 5;
 static const float PATCH_CLOSE_TO_FEATURE = 0.09f;
 
 #endif /* CONSTANTS_HPP */

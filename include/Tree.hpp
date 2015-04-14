@@ -51,7 +51,6 @@ public:
     m_rng = rng;
     m_save_path = save_path;
     m_param = param;
-    //m_num_nodes = powf(2.0f, m_param.max_depth+1) - 1;
     m_num_nodes = powf(2.0f, m_param.max_depth) - 1;
     i_node = 0;
     i_leaf = 0;
@@ -59,7 +58,6 @@ public:
     PRINT("Start training");
     m_ticks = static_cast<double>(cv::getTickCount());
     root = new TreeNode<Sample>(0);
-    Sample::calcWeightClasses(m_weights, samples);
     grow(root, samples);
     save();
   };
@@ -112,8 +110,7 @@ public:
     int nelements = static_cast<int>(samples.size());
     if (nelements < m_param.min_patches || depth >= m_param.max_depth || node->isLeaf())
     {
-      node->createLeaf(samples, m_weights, i_leaf);
-      //i_node += powf(2.0f, m_param.max_depth-depth+1) - 1;
+      node->createLeaf(samples);
       i_node += powf(2.0f, m_param.max_depth-depth) - 1;
       i_leaf++;
       PRINT("  (1) " << 100*static_cast<float>(i_node)/static_cast<float>(m_num_nodes)
@@ -162,8 +159,7 @@ public:
         else
         {
           PRINT("  No valid split found");
-          node->createLeaf(samples, m_weights, i_leaf);
-          //i_node += powf(2.0f, m_param.max_depth-depth+1) - 1;
+          node->createLeaf(samples);
           i_node += powf(2.0f, m_param.max_depth-depth) - 1;
           i_leaf++;
           PRINT("  (4) " << 100*static_cast<float>(i_node)/static_cast<float>(m_num_nodes)
@@ -270,23 +266,19 @@ private:
     int depth
     )
   {
-    best_split.info = boost::numeric::bounds<double>::lowest();
-    best_split.gain = boost::numeric::bounds<double>::lowest();
-    best_split.oob  = boost::numeric::bounds<double>::highest();
-
-    int num_splits = m_param.ntests; // 500 tests to find the best split
-    std::vector<Split> splits(num_splits);
-
-    //float time_stamp = timer.elapsed();
+    // Number of tests to find the best split
+    std::vector<Split> splits(m_param.ntests);
     boost::uniform_int<> dist_split(0, 100);
     boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_split(*m_rng, dist_split);
     int split_mode = rand_split();
-    SplitGen<Sample> sg(samples, splits, m_rng, m_param, depth, split_mode);
+    SplitGen<Sample> sg(samples, splits, m_rng, m_param.getPatchSize(), depth, split_mode);
     sg.generate();
-    //PRINT("  Time: " << timer.elapsed()-time_stamp << " ms (" << timer.elapsed() << " ms)");
 
     // Select the splitting which maximizes the information gain
-    for (unsigned i=0; i < splits.size(); i++)
+    best_split.info = boost::numeric::bounds<double>::lowest();
+    best_split.oob  = boost::numeric::bounds<double>::highest();
+
+    for (unsigned int i=0; i < splits.size(); i++)
       if (splits[i].info > best_split.info)
         best_split = splits[i];
 
@@ -338,7 +330,6 @@ private:
   int i_leaf;
   ForestParam m_param;
   std::string m_save_path;
-  std::vector<float> m_weights;
 
   friend class boost::serialization::access;
   template<class Archive>
@@ -348,7 +339,6 @@ private:
     ar & i_node;
     ar & m_param;
     ar & m_save_path;
-    ar & m_weights;
     ar & root;
   }
 };

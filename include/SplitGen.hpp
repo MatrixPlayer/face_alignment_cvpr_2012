@@ -43,24 +43,23 @@ class SplitGen
 public:
   typedef typename Sample::Split Split;
 
-  // Called from "findOptimalSplit"
   SplitGen
     (
     const std::vector<Sample*> &samples,
     std::vector<Split> &splits,
     boost::mt19937 *rng,
-    ForestParam fp,
+    int patch_size,
     int depth,
     float split_mode
     ) :
-      m_samples(samples), m_splits(splits), m_rng(rng), m_fp(fp),
+      m_samples(samples), m_splits(splits), m_rng(rng), m_patch_size(patch_size),
       m_depth(depth), m_split_mode(split_mode) {};
 
   virtual
   ~SplitGen
     () {};
 
-  // Called from Tree "findOptimalSplit"
+  // Called from "findOptimalSplit" on Tree
   void
   generate
     ()
@@ -80,7 +79,7 @@ public:
   {
     // Randomly estimate the best pair of sub-patches
     boost::mt19937 rng(abs(stripe+1) * std::time(NULL));
-    if (Sample::generateSplit(m_samples, &rng, m_fp, m_splits[stripe]))
+    if (Sample::generateSplit(m_samples, &rng, m_patch_size, m_splits[stripe]))
     {
       // Process each patch with the selected R1 and R2
       std::vector<IntIndex> val_set(m_samples.size());
@@ -97,7 +96,6 @@ public:
     {
       m_splits[stripe].threshold = 0;
       m_splits[stripe].info = boost::numeric::bounds<double>::lowest();
-      m_splits[stripe].gain = boost::numeric::bounds<double>::lowest();
       m_splits[stripe].oob  = boost::numeric::bounds<double>::highest();
     }
   };
@@ -180,7 +178,6 @@ private:
     ) const
   {
     split.info = boost::numeric::bounds<double>::lowest();
-    split.gain = boost::numeric::bounds<double>::lowest();
 
     int min_val = val_set.front().first;
     int max_val = val_set.back().first;
@@ -227,19 +224,18 @@ private:
         {
           split.threshold = thresh;
           split.info = info;
-          split.gain = info;
           split.margin = margin;
         }
       }
     }
   };
 
-  const std::vector<Sample*> &m_samples;
-  std::vector<Split> &m_splits;
-  boost::mt19937 *m_rng;
-  ForestParam m_fp;
-  float m_depth;
-  float m_split_mode;
+  const std::vector<Sample*> &m_samples; // set of patches
+  std::vector<Split> &m_splits;          // splitting candidates
+  boost::mt19937 *m_rng;                 // random number generator
+  int m_patch_size;                      // patch size to generate splits
+  float m_depth;                         // node depth
+  float m_split_mode;                    // random number to choose entropy
 };
 
 #endif /* SPLIT_GEN_HPP */

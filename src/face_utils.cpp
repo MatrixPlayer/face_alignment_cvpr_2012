@@ -244,12 +244,12 @@ getHeadPoseVotesMT
   float sum = 0, sum_sq = 0;
   for (unsigned int i=0; i < leafs.size(); ++i)
   {
-    if (leafs[i]->forgound > options.min_forground_probability)
+    if (leafs[i]->hp_foreground > options.min_forground_probability)
     {
       float m = 0;
       for (int j=0; j < options.num_head_pose_labels; j++)
-        m += leafs[i]->hist_labels[j] * j;
-      m /= (leafs[i]->nSamples * leafs[i]->forgound);
+        m += leafs[i]->hp_labels[j] * j;
+      m /= (leafs[i]->hp_nsamples * leafs[i]->hp_foreground);
       sum += m;
       sum_sq += m * m;
       n++;

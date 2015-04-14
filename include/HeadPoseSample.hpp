@@ -41,7 +41,7 @@ public:
     ) :
       m_image(sample), m_face_bbox(face_bbox), m_patch_bbox(patch_bbox), m_label(label)
   {
-    // If the label is smaller then 0 then negative example
+    // If the label is smaller than 0 then negative example
     m_is_positive = (label >= 0);
   };
 
@@ -68,6 +68,7 @@ public:
     const Split &test
     ) const;
 
+  // Called from "evaluateMT" on TreeNode
   bool
   eval
     (
@@ -80,7 +81,7 @@ public:
     (
     const std::vector<HeadPoseSample*> &samples,
     boost::mt19937 *rng,
-    ForestParam fp,
+    int patch_size,
     Split &split
     );
 
@@ -99,17 +100,7 @@ public:
   makeLeaf
     (
     HeadPoseLeaf &leaf,
-    const std::vector<HeadPoseSample*> &samples,
-    const std::vector<float> &class_weights,
-    int i_leaf = 0
-    );
-
-  // Called from "Tree" initialization
-  static void
-  calcWeightClasses
-    (
-    std::vector<float> &class_weights,
-    const std::vector<HeadPoseSample*> &samples
+    const std::vector<HeadPoseSample*> &set
     );
 
 private:
@@ -154,24 +145,19 @@ class HeadPoseLeaf
 {
 public:
   HeadPoseLeaf
-    ()
-  {
-    depth = -1;
-  };
+    () {};
 
-  int nSamples; //number of patches reached the leaf
-  std::vector<int> hist_labels;
-  float forgound;
-  int depth;
+  int hp_nsamples;            // number of patches reached the leaf
+  float hp_foreground;        // positive patches percentage
+  std::vector<int> hp_labels; // number of patches for each class
 
   friend class boost::serialization::access;
   template<class Archive>
   void serialize(Archive &ar, const unsigned int version)
   {
-    ar & nSamples;
-    ar & forgound;
-    ar & depth;
-    ar & hist_labels;
+    ar & hp_nsamples;
+    ar & hp_foreground;
+    ar & hp_labels;
   }
 };
 

@@ -79,12 +79,10 @@ public:
   void
   createLeaf
     (
-    const std::vector<Sample*> &samples,
-    const std::vector<float> &class_weights,
-    int i_leaf = -1
+    const std::vector<Sample*> &samples
     )
   {
-    Sample::makeLeaf(leaf, samples, class_weights, i_leaf);
+    Sample::makeLeaf(leaf, samples);
     is_leaf = true;
     has_split = false;
   };
@@ -153,6 +151,7 @@ public:
     right = right_child;
   };
 
+  // Called from "evaluateMT" on Tree
   bool
   eval
     (
