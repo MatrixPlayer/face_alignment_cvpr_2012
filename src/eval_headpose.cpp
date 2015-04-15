@@ -20,7 +20,7 @@
 #include <boost/progress.hpp>
 #include <opencv2/opencv.hpp>
 
-#undef VIEWER
+#define VIEWER
 
 // -----------------------------------------------------------------------------
 //
@@ -50,7 +50,7 @@ evalForest
   {
     // Load image
     TRACE("Evaluate image: " << annotations[i].url);
-    cv::Mat img = loadImage(ff_options.mp_forest_param.image_path, annotations[i].url);
+    cv::Mat img = loadImage(ff_options.hp_forest_param.image_path, annotations[i].url);
     if (img.empty())
     {
       ERROR("Could not load: " << annotations[i].url);
@@ -72,7 +72,7 @@ evalForest
     viewer.endDrawing(0);
     #endif
 
-    TRACE("Real:" << annotations[i].pose << " Predict:" << face.headpose);
+    PRINT("Real:" << annotations[i].pose << " Predict:" << face.headpose);
   }
 };
 
@@ -107,7 +107,7 @@ main
 
   // Loading images annotations
   std::vector<FaceAnnotation> annotations;
-  if (!loadAnnotations(mp_param.image_path, annotations))
+  if (!loadAnnotations(hp_param.image_path, annotations))
     return EXIT_FAILURE;
 
   FaceForestOptions ff_options;

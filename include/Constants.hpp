@@ -63,6 +63,7 @@ struct ForestParam
  * @brief Class identifiers used by the computer vision algorithms
  ******************************************************************************/
 static const int NUM_HEADPOSE_CLASSES = 5;
+static const float NORM_HEADPOSE_VARIANCE_FACTOR = 0.05f;
 static const float PATCH_CLOSE_TO_FEATURE = 0.09f;
 
 #endif /* CONSTANTS_HPP */

@@ -35,11 +35,11 @@ struct HeadPoseEstimatorOption
 {
   HeadPoseEstimatorOption
     () :
-    num_head_pose_labels(5), step_size(4), min_forground_probability(0.5) {};
+    num_head_pose_labels(NUM_HEADPOSE_CLASSES), step_size(4), min_foreground_probability(0.5) {};
 
   int num_head_pose_labels;
   int step_size;
-  float min_forground_probability;
+  float min_foreground_probability;
 };
 
 struct MultiPartEstimatorOption
@@ -143,8 +143,7 @@ public:
     (
     const cv::Mat img,
     cv::Rect face_bbox,
-    Face &face,
-    bool normalize = true
+    Face &face
     );
 
 private:

@@ -20,18 +20,6 @@ ImageSample::ImageSample
   extractFeatureChannels(img, m_feature_channels, features, m_use_integral, fcf);
 };
 
-ImageSample::ImageSample
-  (
-  const cv::Mat img,
-  std::vector<int> features,
-  FeatureChannelFactory &fcf,
-  bool use_integral
-  ) :
-  m_use_integral(use_integral)
-{
-  extractFeatureChannels(img, m_feature_channels, features, m_use_integral, fcf);
-};
-
 ImageSample::~ImageSample
   ()
 {

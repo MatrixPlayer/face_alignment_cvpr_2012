@@ -159,14 +159,6 @@ public:
     bool use_integral = false
     );
 
-  ImageSample
-    (
-    const cv::Mat img,
-    std::vector<int> features,
-    FeatureChannelFactory &fcf,
-    bool use_integral = false
-    );
-
   virtual
   ~ImageSample
     ();

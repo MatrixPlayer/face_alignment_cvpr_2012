@@ -35,7 +35,7 @@ FaceForest::FaceForest
   }
 
   // Loading facial-feature-detect forests on m_mp_jungle
-  PRINT("Loading facial-feature-detect forests");
+  /*PRINT("Loading facial-feature-detect forests");
   boost::filesystem::path dir_path(m_options.mp_forest_param.tree_path);
   boost::filesystem::directory_iterator end_it;
   for (boost::filesystem::directory_iterator it(dir_path); it != end_it; ++it)
@@ -52,7 +52,7 @@ FaceForest::FaceForest
       return;
     }
     m_mp_jungle.push_back(mp_forest);
-  }
+  }*/
 
   is_inizialized = true;
 };
@@ -185,8 +185,7 @@ FaceForest::analyzeFace
   (
   const cv::Mat img,
   cv::Rect face_bbox,
-  Face &face,
-  bool normalize
+  Face &face
   )
 {
   CV_Assert(is_inizialized);
@@ -196,22 +195,25 @@ FaceForest::analyzeFace
   cv::Mat img_gray;
   cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
 
+  // Extract face detection image
+  cv::Mat img_roi = img_gray(face_bbox);
+
   // Scale image
-  cv::Mat img_face;
-  float scale = static_cast<float>(m_options.hp_forest_param.face_size)/static_cast<float>(face_bbox.width);
-  cv::resize(img_gray(face_bbox), img_face, cv::Size(face_bbox.width*scale, face_bbox.height*scale), 0, 0);
+  float scale = static_cast<float>(m_options.hp_forest_param.face_size)/static_cast<float>(img_roi.cols);
+  cv::Mat img_scaled;
+  cv::resize(img_roi, img_scaled, cv::Size(img_roi.cols*scale, img_roi.rows*scale), 0, 0);
 
   // Normalize histogram
-  if (normalize)
-    cv::equalizeHist(img_face, img_face);
+  cv::Mat img_face;
+  cv::equalizeHist(img_scaled, img_face);
 
-  // Create image sample
-  ImageSample sample(img_face, m_options.hp_forest_param.features, fcf, true);
+  // Extract patches from this image sample
+  ImageSample sample(img_face, m_options.hp_forest_param.features, false);
 
   /// Estimate head-pose
   float headpose = 0, variance = 0;
   estimateHeadPose(sample, cv::Rect(0,0,img_face.cols,img_face.rows), m_hp_forest, m_options.hp_option, &headpose, &variance);
-  face.headpose = headpose;
+  face.headpose = headpose; // predicted label [-2..+2]
 
   // Compute area under curve
   int hist_size = static_cast<int>(m_mp_jungle.size());
@@ -238,7 +240,7 @@ FaceForest::analyzeFace
   }
 
   // Add new trees based on the estimated head-pose
-  m_mp_forest.setParam(m_options.mp_forest_param);
+  /*m_mp_forest.setParam(m_options.mp_forest_param);
   m_mp_forest.cleanForest();
   for (unsigned i=0; i < m_mp_jungle.size(); i++)
   {
@@ -256,5 +258,5 @@ FaceForest::analyzeFace
 
   // Scale results
   for (unsigned i=0; i < face.ffd_cordinates.size(); i++)
-    face.ffd_cordinates[i] *= 1.0f/scale;
+    face.ffd_cordinates[i] *= 1.0f/scale;*/
 };

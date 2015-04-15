@@ -25,6 +25,15 @@
 #define NEG_PATCHES_RATIO 0.2f
 #define MAX_NEG_ATTEMPTS 100
 
+// -----------------------------------------------------------------------------
+//
+// Purpose and Method:
+// Inputs:
+// Outputs:
+// Dependencies:
+// Restrictions and Caveats:
+//
+// -----------------------------------------------------------------------------
 void
 trainTree
   (
@@ -82,10 +91,24 @@ trainTree
       continue;
     }
 
-    // Scale image and annotations
-    cv::Mat img_scaled = scale(img, hp_param.face_size, annotations[i]);
+    // Convert image to gray scale
+    cv::Mat img_gray;
+    cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
 
-    // Extract features from an image
+    // Scale image and annotations
+    float scale = static_cast<float>(hp_param.face_size)/static_cast<float>(annotations[i].bbox.width);
+    cv::Mat img_scaled;
+    cv::resize(img_gray, img_scaled, cv::Size(img_gray.cols*scale, img_gray.rows*scale), 0, 0);
+    annotations[i].bbox.x *= scale;
+    annotations[i].bbox.y *= scale;
+    annotations[i].bbox.width *= scale;
+    annotations[i].bbox.height *= scale;
+
+    // Normalize histogram
+    cv::Mat img_face;
+    cv::equalizeHist(img_scaled, img_face);
+
+    // Extract patches from this image sample
     ImageSample *sample = new ImageSample(img_scaled, hp_param.features, false);
 
     // Extract positive patches
@@ -98,7 +121,6 @@ trainTree
       int label = annotations[i].pose + 2;
       HeadPoseSample *hps = new HeadPoseSample(sample, annotations[i].bbox, bbox, label);
       hp_samples.push_back(hps);
-      //hps->show();
     }
 
     // Extract negative patches
@@ -120,7 +142,6 @@ trainTree
         continue;
       HeadPoseSample *hps = new HeadPoseSample(sample, annotations[i].bbox, bbox, -1);
       hp_samples.push_back(hps);
-      //hps->show();
     }
   }
   PRINT("Used patches: " << hp_samples.size());
@@ -131,6 +152,15 @@ trainTree
     tree = new Tree<HeadPoseSample>(hp_samples, hp_param, &rng, tree_path);
 };
 
+// -----------------------------------------------------------------------------
+//
+// Purpose and Method:
+// Inputs:
+// Outputs:
+// Dependencies:
+// Restrictions and Caveats:
+//
+// -----------------------------------------------------------------------------
 int
 main
   (

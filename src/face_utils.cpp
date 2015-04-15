@@ -28,27 +28,6 @@ loadImage
 };
 
 cv::Mat
-scale
-  (
-  cv::Mat img,
-  int face_size,
-  FaceAnnotation &annotation
-  )
-{
-  float scale = static_cast<float>(face_size)/static_cast<float>(annotation.bbox.width);
-  annotation.bbox.x *= scale;
-  annotation.bbox.y *= scale;
-  annotation.bbox.width *= scale;
-  annotation.bbox.height *= scale;
-  for (unsigned int i=0; i < annotation.parts.size(); i++)
-    annotation.parts[i] *= scale;
-
-  cv::Mat img_scaled;
-  cv::resize(img, img_scaled, cv::Size(img.cols*scale, img.rows*scale), 0, 0);
-  return img_scaled;
-};
-
-cv::Mat
 enlarge
   (
   cv::Mat img,
@@ -216,37 +195,38 @@ getHeadPoseVotesMT
   HeadPoseEstimatorOption options
   )
 {
-  ForestParam param = forest.getParam();
-  int patch_size = param.face_size * param.patch_size_ratio;
-  // Reserve patches for dense extraction options.step_size == 1
+  int patch_size = forest.getParam().getPatchSize();
+  int num_trees = forest.numberOfTrees();
+
+  // Reserve patches like a dense extraction for options.step_size == 1
   std::vector<HeadPoseSample> samples;
   samples.reserve((face_bbox.width-patch_size) * (face_bbox.height-patch_size));
-  for (int x = face_bbox.x; x < face_bbox.x+face_bbox.width-patch_size; x += options.step_size)
+  for (int x=face_bbox.x; x < face_bbox.x+face_bbox.width-patch_size; x += options.step_size)
   {
-    for (int y = face_bbox.y; y < face_bbox.y+face_bbox.height-patch_size; y += options.step_size)
+    for (int y=face_bbox.y; y < face_bbox.y+face_bbox.height-patch_size; y += options.step_size)
     {
       cv::Rect patch_box(x, y, patch_size, patch_size);
       samples.push_back(HeadPoseSample(&sample, patch_box));
     }
   }
 
+  // Process each patch using all the trees
   int num_treads = boost::thread::hardware_concurrency();
   boost::thread_pool::ThreadPool e(num_treads);
   std::vector<HeadPoseLeaf*> leafs;
-  int num_trees = forest.numberOfTrees();
   leafs.resize(samples.size() * num_trees);
   for (unsigned int i=0; i < samples.size(); i++)
     e.submit(boost::bind(&Forest<HeadPoseSample>::evaluateMT, forest, &samples[i], &leafs[i*num_trees]));
   e.join_all();
 
   // Parse collected leafs
-  int n = 0;
-  float sum = 0, sum_sq = 0;
+  float n = 0, sum = 0, sum_sq = 0;
   for (unsigned int i=0; i < leafs.size(); ++i)
   {
-    if (leafs[i]->hp_foreground > options.min_forground_probability)
+    // Only use leafs that contains a minimum of positive patches
+    if (leafs[i]->hp_foreground > options.min_foreground_probability)
     {
-      float m = 0;
+      float m = 0; // predicted label [0..4]
       for (int j=0; j < options.num_head_pose_labels; j++)
         m += leafs[i]->hp_labels[j] * j;
       m /= (leafs[i]->hp_nsamples * leafs[i]->hp_foreground);
@@ -258,9 +238,8 @@ getHeadPoseVotesMT
   float mean = sum / n;
   float var  = (sum_sq / n) - (mean * mean);
 
-  const float norm_factor = 0.05;
-  var  *= norm_factor;
   mean -= 2;
+  var  *= NORM_HEADPOSE_VARIANCE_FACTOR;
 
   *headpose = mean;
   *variance = var;
@@ -276,14 +255,13 @@ getFacialFeaturesVotesMT
   MultiPartEstimatorOption options
   )
 {
-  ForestParam param = forest.getParam();
-  int patch_size = param.face_size * param.patch_size_ratio;
-  // Reserve patches for dense extraction options.step_size == 1
+  int patch_size = forest.getParam().getPatchSize();
+  // Reserve patches like a dense extraction for options.step_size == 1
   std::vector<MPSample> samples;
   samples.reserve((face_bbox.width-patch_size) * (face_bbox.height-patch_size));
-  for (int x = face_bbox.x; x < face_bbox.x+face_bbox.width-patch_size; x += options.step_size)
+  for (int x=face_bbox.x; x < face_bbox.x+face_bbox.width-patch_size; x += options.step_size)
   {
-    for (int y = face_bbox.y; y < face_bbox.y+face_bbox.height-patch_size; y += options.step_size)
+    for (int y=face_bbox.y; y < face_bbox.y+face_bbox.height-patch_size; y += options.step_size)
     {
       cv::Rect patch_box(x, y, patch_size, patch_size);
       samples.push_back(MPSample(&sample, patch_box));
