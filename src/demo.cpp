@@ -8,6 +8,8 @@
 // ----------------------- INCLUDES --------------------------------------------
 #include <trace.hpp>
 #include <Viewer.hpp>
+#include <ImageSample.hpp>
+#include <MPSample.hpp>
 #include <FaceForest.hpp>
 #include <face_utils.hpp>
 
@@ -64,23 +66,29 @@ trainTree
     cv::Mat img_gray;
     cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
 
-    // Scale image and annotations (125 x 125)
-    cv::Mat img_scaled = scale(img_gray, mp_param.face_size, annotations[i]);
+    // Scale image and annotations
+    float scale = static_cast<float>(mp_param.face_size)/static_cast<float>(annotations[i].bbox.width);
+    cv::Mat img_scaled;
+    cv::resize(img_gray, img_scaled, cv::Size(img_gray.cols*scale, img_gray.rows*scale), 0, 0);
+    annotations[i].bbox.x *= scale;
+    annotations[i].bbox.y *= scale;
+    annotations[i].bbox.width *= scale;
+    annotations[i].bbox.height *= scale;
+    for (unsigned int j=0; j < annotations[i].parts.size(); j++)
+      annotations[i].parts[j] *= scale;
 
-    // Enlarge image to make sure that all facial features are enclosed (149 x 149)
-    cv::Mat img_enlarged = enlarge(img_scaled, annotations[i]);
-
-    // Normalize histogram
-    cv::Mat img_face;
-    cv::equalizeHist(img_enlarged, img_face);
+    // Extract face image and enlarge to make sure that all facial features are enclosed
+    cv::Rect enlarge_bbox;
+    enlargeFace(img_scaled, enlarge_bbox, annotations[i]);
+    cv::Mat img_roi = img_scaled(enlarge_bbox);
 
     // Create image sample
-    ImageSample *sample = new ImageSample(img_face, mp_param.features, false);
+    ImageSample *sample = new ImageSample(img_roi, mp_param.features, false);
 
     // Extract positive patches
-    int patch_size = mp_param.patchSize();
-    boost::uniform_int<> dist_x(1, img_face.cols-patch_size-2);
-    boost::uniform_int<> dist_y(1, img_face.rows-patch_size-2);
+    int patch_size = mp_param.getPatchSize();
+    boost::uniform_int<> dist_x(1, img_roi.cols-patch_size-2);
+    boost::uniform_int<> dist_y(1, img_roi.rows-patch_size-2);
     boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_x(rng, dist_x);
     boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_y(rng, dist_y);
     for (int j=0; j < mp_param.npatches; j++)
@@ -88,7 +96,6 @@ trainTree
       cv::Rect bbox = cv::Rect(rand_x(), rand_y(), patch_size, patch_size);
       MPSample *mps = new MPSample(sample, bbox, annotations[i].parts, mp_param.face_size, true);
       mp_samples.push_back(mps);
-      mps->show();
     }
   }
   PRINT("Used patches: " << mp_samples.size());
