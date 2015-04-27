@@ -22,6 +22,15 @@
 #include <boost/random/variate_generator.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+// -----------------------------------------------------------------------------
+//
+// Purpose and Method:
+// Inputs:
+// Outputs:
+// Dependencies:
+// Restrictions and Caveats:
+//
+// -----------------------------------------------------------------------------
 void
 trainTree
   (
@@ -31,15 +40,15 @@ trainTree
   int idx_tree
   )
 {
-  srand(idx_tree+1);
-  std::random_shuffle(annotations.begin(), annotations.end());
-
   // Try to read the facial feature conditional regression tree
   char tree_path[200];
   sprintf(tree_path, "%s/forest_%d/tree_%03d.txt", mp_param.tree_path.c_str(), idx_forest, idx_tree);
   PRINT("Read facial feature regression tree: " << tree_path);
   Tree<MPSample> *tree;
   bool is_tree_load = Tree<MPSample>::load(&tree, tree_path);
+
+  srand(idx_tree+1);
+  std::random_shuffle(annotations.begin(), annotations.end());
 
   // Separate annotations by head-pose classes
   std::vector< std::vector<FaceAnnotation> > cluster(NUM_HEADPOSE_CLASSES);
@@ -79,27 +88,33 @@ trainTree
       continue;
     }
 
-    // Convert to gray-scale
+    // Convert image to gray scale
     cv::Mat img_gray;
     cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
 
     // Scale image and annotations
-    cv::Mat img_scaled = scale(img_gray, mp_param.face_size, annotations[i]);
+    float scale = static_cast<float>(mp_param.face_size)/static_cast<float>(annotations[i].bbox.width);
+    cv::Mat img_scaled;
+    cv::resize(img_gray, img_scaled, cv::Size(img_gray.cols*scale, img_gray.rows*scale), 0, 0);
+    annotations[i].bbox.x *= scale;
+    annotations[i].bbox.y *= scale;
+    annotations[i].bbox.width *= scale;
+    annotations[i].bbox.height *= scale;
+    for (unsigned int j=0; j < annotations[i].parts.size(); j++)
+      annotations[i].parts[j] *= scale;
 
-    // Enlarge image to make sure that all facial features are enclosed (149 x 149)
-    cv::Mat img_enlarged = enlarge(img_scaled, annotations[i]);
+    // Extract face image and enlarge to make sure that all facial features are enclosed
+    cv::Rect enlarge_bbox;
+    enlargeFace(img_scaled, enlarge_bbox, annotations[i]);
+    cv::Mat img_roi = img_scaled(enlarge_bbox);
 
-    // Normalize histogram
-    cv::Mat img_face;
-    cv::equalizeHist(img_enlarged, img_face);
-
-    // Create image sample
-    ImageSample *sample = new ImageSample(img_face, mp_param.features, false);
+    // Extract patches from this image sample
+    ImageSample *sample = new ImageSample(img_roi, mp_param.features, false);
 
     // Extract positive patches
     int patch_size = mp_param.getPatchSize();
-    boost::uniform_int<> dist_x(1, img_face.cols-patch_size-2);
-    boost::uniform_int<> dist_y(1, img_face.rows-patch_size-2);
+    boost::uniform_int<> dist_x(1, img_roi.cols-patch_size-2);
+    boost::uniform_int<> dist_y(1, img_roi.rows-patch_size-2);
     boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_x(rng, dist_x);
     boost::variate_generator< boost::mt19937&, boost::uniform_int<> > rand_y(rng, dist_y);
     for (int j=0; j < mp_param.npatches; j++)
@@ -117,6 +132,15 @@ trainTree
     tree = new Tree<MPSample>(mp_samples, mp_param, &rng, tree_path);
 };
 
+// -----------------------------------------------------------------------------
+//
+// Purpose and Method:
+// Inputs:
+// Outputs:
+// Dependencies:
+// Restrictions and Caveats:
+//
+// -----------------------------------------------------------------------------
 int
 main
   (

@@ -49,20 +49,12 @@ loadImage
   std::string name
   );
 
-// Scale image and annotations for training
-cv::Mat
-scale
+// Enlarge image and annotations by 20% for train facial points
+void
+enlargeFace
   (
   cv::Mat img,
-  int face_size,
-  FaceAnnotation &annotation
-  );
-
-// Enlarge image and annotations by 20% for training
-cv::Mat
-enlarge
-  (
-  cv::Mat img,
+  cv::Rect &enlarge_bbox,
   FaceAnnotation &annotation
   );
 

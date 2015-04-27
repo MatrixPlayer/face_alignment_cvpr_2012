@@ -35,7 +35,7 @@ FaceForest::FaceForest
   }
 
   // Loading facial-feature-detect forests on m_mp_jungle
-  /*PRINT("Loading facial-feature-detect forests");
+  PRINT("Loading facial-feature-detect forests");
   boost::filesystem::path dir_path(m_options.mp_forest_param.tree_path);
   boost::filesystem::directory_iterator end_it;
   for (boost::filesystem::directory_iterator it(dir_path); it != end_it; ++it)
@@ -52,7 +52,7 @@ FaceForest::FaceForest
       return;
     }
     m_mp_jungle.push_back(mp_forest);
-  }*/
+  }
 
   is_inizialized = true;
 };
@@ -203,16 +203,12 @@ FaceForest::analyzeFace
   cv::Mat img_scaled;
   cv::resize(img_roi, img_scaled, cv::Size(img_roi.cols*scale, img_roi.rows*scale), 0, 0);
 
-  // Normalize histogram
-  cv::Mat img_face;
-  cv::equalizeHist(img_scaled, img_face);
-
   // Extract patches from this image sample
-  ImageSample sample(img_face, m_options.hp_forest_param.features, false);
+  ImageSample sample(img_scaled, m_options.hp_forest_param.features, false);
 
   /// Estimate head-pose
   float headpose = 0, variance = 0;
-  estimateHeadPose(sample, cv::Rect(0,0,img_face.cols,img_face.rows), m_hp_forest, m_options.hp_option, &headpose, &variance);
+  estimateHeadPose(sample, cv::Rect(0,0,img_scaled.cols,img_scaled.rows), m_hp_forest, m_options.hp_option, &headpose, &variance);
   face.headpose = headpose; // predicted label [-2..+2]
 
   // Compute area under curve
@@ -240,7 +236,7 @@ FaceForest::analyzeFace
   }
 
   // Add new trees based on the estimated head-pose
-  /*m_mp_forest.setParam(m_options.mp_forest_param);
+  m_mp_forest.setParam(m_options.mp_forest_param);
   m_mp_forest.cleanForest();
   for (unsigned i=0; i < m_mp_jungle.size(); i++)
   {
@@ -254,9 +250,9 @@ FaceForest::analyzeFace
     m_mp_forest.addTree(m_mp_jungle[dominant_headpose].getTree(i));
 
   /// Estimate facial feature points
-  estimateFacialFeatures(sample, cv::Rect(0,0,img_face.cols,img_face.rows), m_mp_forest, m_options.mp_option, face.ffd_cordinates);
+  estimateFacialFeatures(sample, cv::Rect(0,0,img_scaled.cols,img_scaled.rows), m_mp_forest, m_options.mp_option, face.ffd_cordinates);
 
   // Scale results
   for (unsigned i=0; i < face.ffd_cordinates.size(); i++)
-    face.ffd_cordinates[i] *= 1.0f/scale;*/
+    face.ffd_cordinates[i] *= 1.0f/scale;
 };

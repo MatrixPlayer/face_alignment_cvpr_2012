@@ -65,16 +65,6 @@ public:
     return &leaf;
   };
 
-  /*void
-  setLeaf
-    (
-    Leaf l
-    )
-  {
-    is_leaf = true;
-    leaf = l;
-  };*/
-
   // Called from "grow"
   void
   createLeaf
@@ -86,22 +76,6 @@ public:
     is_leaf = true;
     has_split = false;
   };
-
-  /*void
-  collectLeafs
-    (
-    std::vector<Leaf*> &leafs
-    )
-  {
-    if (!is_leaf)
-    {
-      right->collectLeafs(leafs);
-      left->collectLeafs(leafs);
-    } else {
-      leaf.depth = depth;
-      leafs.push_back(&leaf);
-    }
-  };*/
 
   // Called from "grow"
   bool
@@ -178,6 +152,8 @@ private:
     ar & depth;
     ar & is_leaf;
     ar & has_split;
+    if (is_leaf)
+      ar & leaf;
     if (has_split)
       ar & split;
     if (!is_leaf)
@@ -185,8 +161,6 @@ private:
       ar & left;
       ar & right;
     }
-    else
-      ar & leaf;
   }
 };
 

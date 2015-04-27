@@ -42,15 +42,15 @@ trainTree
   int idx_tree
   )
 {
-  srand(idx_tree+1);
-  std::random_shuffle(annotations.begin(), annotations.end());
-
   // Try to read the head pose conditional regression tree
   char tree_path[200];
   sprintf(tree_path, "%s/tree_%03d.txt", hp_param.tree_path.c_str(), idx_tree);
   PRINT("Read head pose regression tree: " << tree_path);
   Tree<HeadPoseSample> *tree;
   bool is_tree_load = Tree<HeadPoseSample>::load(&tree, tree_path);
+
+  srand(idx_tree+1);
+  std::random_shuffle(annotations.begin(), annotations.end());
 
   // Separate annotations by head-pose classes
   std::vector< std::vector<FaceAnnotation> > cluster(NUM_HEADPOSE_CLASSES);
@@ -103,10 +103,6 @@ trainTree
     annotations[i].bbox.y *= scale;
     annotations[i].bbox.width *= scale;
     annotations[i].bbox.height *= scale;
-
-    // Normalize histogram
-    cv::Mat img_face;
-    cv::equalizeHist(img_scaled, img_face);
 
     // Extract patches from this image sample
     ImageSample *sample = new ImageSample(img_scaled, hp_param.features, false);

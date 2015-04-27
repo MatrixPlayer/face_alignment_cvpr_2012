@@ -17,7 +17,7 @@ HeadPoseSample::show
   cv::Scalar white_color = cv::Scalar(255, 255, 255);
   cv::Scalar black_color = cv::Scalar(0, 0, 0);
   cv::Mat img = m_image->m_feature_channels[0].clone();
-  cv::imshow("Patch", img(m_patch_bbox));
+  cv::imshow("Gray patch", img(m_patch_bbox));
   cv::rectangle(img, m_face_bbox, white_color);
   if (m_label >= 0)
     cv::rectangle(img, m_patch_bbox, white_color);

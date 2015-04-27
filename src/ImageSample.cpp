@@ -16,8 +16,7 @@ ImageSample::ImageSample
   ) :
   m_use_integral(use_integral)
 {
-  FeatureChannelFactory fcf = FeatureChannelFactory();
-  extractFeatureChannels(img, m_feature_channels, features, m_use_integral, fcf);
+  extractFeatureChannels(img, m_feature_channels, features, m_use_integral);
 };
 
 ImageSample::~ImageSample
@@ -81,22 +80,11 @@ ImageSample::extractFeatureChannels
   const cv::Mat &img,
   std::vector<cv::Mat> &feature_channels,
   std::vector<int> features,
-  bool use_integral,
-  FeatureChannelFactory &fcf
+  bool use_integral
   ) const
 {
   sort(features.begin(), features.end());
+  FeatureChannelFactory fcf = FeatureChannelFactory();
   for (unsigned int i=0; i < features.size(); i++)
     fcf.extractChannel(features[i], use_integral, img, feature_channels);
-};
-
-void
-ImageSample::getSubPatches
-  (
-  cv::Rect rect,
-  std::vector<cv::Mat> &tmpPatches
-  )
-{
-  for (unsigned int i=0; i < m_feature_channels.size(); i++)
-    tmpPatches.push_back(m_feature_channels[i](rect));
 };

@@ -179,37 +179,6 @@ public:
     ) const;
 
   void
-  extractFeatureChannels
-    (
-    const cv::Mat &img,
-    std::vector<cv::Mat> &feature_channels,
-    std::vector<int> features,
-    bool use_integral,
-    FeatureChannelFactory &fcf
-    ) const;
-
-  void
-  getSubPatches
-    (
-    cv::Rect rect,
-    std::vector<cv::Mat> &tmpPatches
-    );
-
-  int
-  width
-    () const
-  {
-    return m_feature_channels[0].cols;
-  };
-
-  int
-  height
-    () const
-  {
-    return m_feature_channels[0].rows;
-  };
-
-  void
   show
     () const
   {
@@ -221,6 +190,15 @@ public:
 
 private:
   bool m_use_integral;
+
+  void
+  extractFeatureChannels
+    (
+    const cv::Mat &img,
+    std::vector<cv::Mat> &feature_channels,
+    std::vector<int> features,
+    bool use_integral
+    ) const;
 };
 
 #endif /* IMAGE_SAMPLE_HPP */

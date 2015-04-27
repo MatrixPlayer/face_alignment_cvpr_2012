@@ -27,28 +27,24 @@ loadImage
   return cv::imread(filename, cv::IMREAD_COLOR);
 };
 
-cv::Mat
-enlarge
+void
+enlargeFace
   (
   cv::Mat img,
+  cv::Rect &enlarge_bbox,
   FaceAnnotation &annotation
   )
 {
-  int offset_x = annotation.bbox.width * 0.1;
-  int offset_y = annotation.bbox.height * 0.1;
-  cv::Rect aux = cv::Rect(annotation.bbox.x-offset_x, annotation.bbox.y-offset_y,
-                          annotation.bbox.width+(offset_x*2), annotation.bbox.height+(offset_y*2));
-  cv::Rect enlarge_bbox = intersect(aux, cv::Rect(0,0,img.cols,img.rows));
+  cv::Point2i offset(annotation.bbox.width*0.1, annotation.bbox.height*0.1);
+  cv::Rect aux = cv::Rect(annotation.bbox.x-offset.x, annotation.bbox.y-offset.y,
+                          annotation.bbox.width+(offset.x*2), annotation.bbox.height+(offset.y*2));
+  enlarge_bbox = intersect(aux, cv::Rect(0,0,img.cols,img.rows));
   annotation.bbox.x = 0;
   annotation.bbox.y = 0;
   annotation.bbox.width = enlarge_bbox.width;
   annotation.bbox.height = enlarge_bbox.height;
   for (unsigned int i=0; i < annotation.parts.size(); i++)
-  {
-    annotation.parts[i].x += offset_x;
-    annotation.parts[i].y += offset_y;
-  }
-  return img(enlarge_bbox);
+    annotation.parts[i] += offset;
 };
 
 bool

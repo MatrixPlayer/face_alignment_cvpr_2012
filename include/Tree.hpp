@@ -142,10 +142,10 @@ public:
           node->setSplit(best_split);
           i_node++;
 
-          TreeNode<Sample> *left = new TreeNode<Sample>(depth + 1);
+          TreeNode<Sample> *left = new TreeNode<Sample>(depth+1);
           node->addLeftChild(left);
 
-          TreeNode<Sample> *right = new TreeNode<Sample>(depth + 1);
+          TreeNode<Sample> *right = new TreeNode<Sample>(depth+1);
           node->addRightChild(right);
 
           saveAuto();
