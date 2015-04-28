@@ -48,10 +48,10 @@ public:
   // Testing
   HeadPoseSample
     (
-    const ImageSample *image_,
-    cv::Rect rect_
+    const ImageSample *sample,
+    cv::Rect patch_bbox
     ) :
-      m_image(image_), m_patch_bbox(rect_), m_label(-1) {};
+      m_image(sample), m_patch_bbox(patch_bbox), m_label(-1) {};
 
   virtual
   ~HeadPoseSample

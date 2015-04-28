@@ -19,12 +19,12 @@ function generate_report()
   set(gca, 'XTickLabel', x)
   xlabel('Facial Feature');
   ylabel('Inter-Occular Distance');
-  legend('binary','paper');
+  legend('bobetocalo','paper');
   
   accuracy_paper = [87.7 93.5 81.9 80.8 71.5 86.7 92.9 86.2 90.4 88.2];
   figure, bar([accuracy' accuracy_paper'])
   set(gca, 'XTickLabel', x)
   xlabel('Facial Feature');
   ylabel('Accuracy');
-  legend('binary','paper');
+  legend('bobetocalo','paper');
 end

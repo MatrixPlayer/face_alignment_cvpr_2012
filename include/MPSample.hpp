@@ -14,7 +14,6 @@
 #include <ImageSample.hpp>
 #include <SplitGen.hpp>
 #include <opencv_serialization.hpp>
-
 #include <vector>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/vector.hpp>
@@ -33,10 +32,6 @@ public:
   typedef ThresholdSplit<SimplePatchFeature> Split;
   typedef MPLeaf Leaf;
 
-  MPSample
-    () :
-      m_nparts(0) {};
-
   // Training
   MPSample
     (
@@ -51,9 +46,10 @@ public:
   // Testing
   MPSample
     (
-    const ImageSample *patch,
-    cv::Rect rect
-    );
+    const ImageSample *sample,
+    cv::Rect patch_bbox
+    ) :
+      m_image(sample), m_patch_bbox(patch_bbox) {};
 
   virtual
   ~MPSample
@@ -132,22 +128,6 @@ private:
   int m_nparts;
   std::vector< cv::Point_<int> > m_part_offsets;
   cv::Mat m_prob;
-  float distToCenter;
-
-  friend class boost::serialization::access;
-  template<class Archive>
-  void serialize(Archive &ar, const unsigned int version)
-  {
-    ar & m_is_positive;
-    if (m_is_positive)
-    {
-      ar & m_patch_offset;
-      ar & m_part_offsets;
-      ar & m_prob;
-      ar & m_patch_bbox;
-      ar & distToCenter;
-    }
-  }
 };
 
 /** ****************************************************************************
@@ -158,39 +138,27 @@ class MPLeaf
 {
 public:
   MPLeaf
-    ()
-  {
-    depth = -1;
-    save_all = false;
-  };
+    () {};
 
-  std::vector<float> maxDists;
-  std::vector<float> lamda;
-  int nSamples; // number of patches reached the leaf
-  std::vector<cv::Point_<int> > parts_offset; // vector of the means
-  std::vector<float> variance; // variance of the votes
-  std::vector<float> pF; // probability of foreground per each point
-  cv::Point_<int> patch_offset;
-  float forgound; //probability of face
-  int depth;
-  bool save_all;
-  std::vector<cv::Point_<int> > offset_sum;
-  std::vector<cv::Point_<int> > offset_sum_sq;
-  std::vector<float> sum_pf;
-  int sum_pos;
-  int sum_all;
+  int mp_samples;                                 // number of patches reached the leaf
+  std::vector< cv::Point_<int> > mp_parts_offset; // vector of facial points
+  std::vector<float> mp_parts_variance;           // variance of the votes
+  std::vector<float> mp_prob_foreground;          // probability of foreground per each point
+  float mp_foreground;                            // probability of face
+  cv::Point_<int> mp_patch_offset;
+  bool mp_save_all;
 
   friend class boost::serialization::access;
   template<class Archive>
   void serialize(Archive &ar, const unsigned int version)
   {
-    ar & nSamples;
-    ar & parts_offset;
-    ar & variance;
-    ar & pF;
-    ar & forgound;
-    ar & patch_offset;
-    ar & save_all;
+    ar & mp_samples;
+    ar & mp_parts_offset;
+    ar & mp_parts_variance;
+    ar & mp_prob_foreground;
+    ar & mp_foreground;
+    ar & mp_patch_offset;
+    ar & mp_save_all;
   }
 };
 

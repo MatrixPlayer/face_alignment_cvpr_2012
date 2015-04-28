@@ -204,7 +204,7 @@ FaceForest::analyzeFace
   cv::resize(img_roi, img_scaled, cv::Size(img_roi.cols*scale, img_roi.rows*scale), 0, 0);
 
   // Extract patches from this image sample
-  ImageSample sample(img_scaled, m_options.hp_forest_param.features, false);
+  ImageSample sample(img_scaled, m_options.hp_forest_param.features, true);
 
   /// Estimate head-pose
   float headpose = 0, variance = 0;

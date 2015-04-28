@@ -16,7 +16,7 @@ ImageSample::ImageSample
   ) :
   m_use_integral(use_integral)
 {
-  extractFeatureChannels(img, m_feature_channels, features, m_use_integral);
+  extractFeatureChannels(img, features, m_use_integral, m_feature_channels);
 };
 
 ImageSample::~ImageSample
@@ -78,9 +78,9 @@ void
 ImageSample::extractFeatureChannels
   (
   const cv::Mat &img,
-  std::vector<cv::Mat> &feature_channels,
   std::vector<int> features,
-  bool use_integral
+  bool use_integral,
+  std::vector<cv::Mat> &feature_channels
   ) const
 {
   sort(features.begin(), features.end());

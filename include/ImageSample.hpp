@@ -150,9 +150,6 @@ class ImageSample
 {
 public:
   ImageSample
-    () {};
-
-  ImageSample
     (
     const cv::Mat img,
     std::vector<int> features,
@@ -195,9 +192,9 @@ private:
   extractFeatureChannels
     (
     const cv::Mat &img,
-    std::vector<cv::Mat> &feature_channels,
     std::vector<int> features,
-    bool use_integral
+    bool use_integral,
+    std::vector<cv::Mat> &feature_channels
     ) const;
 };
 

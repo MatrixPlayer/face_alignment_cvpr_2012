@@ -286,13 +286,13 @@ getFacialFeaturesVotesMT
       if (i == 0 || i == 7) // probability in outer eye parts
         min_pf *= 1.5;
 
-      if ((*it_leaf)->forgound > options.min_forground && (*it_leaf)->pF[i] > min_pf &&
-          (*it_leaf)->variance[i] < options.max_variance && (*it_leaf)->nSamples > options.min_samples)
+      if ((*it_leaf)->mp_foreground > options.min_forground && (*it_leaf)->mp_prob_foreground[i] > min_pf &&
+          (*it_leaf)->mp_parts_variance[i] < options.max_variance && (*it_leaf)->mp_samples > options.min_samples)
       {
         Vote v;
-        v.pos.x  = (*it_leaf)->parts_offset[i].x + offset_x;
-        v.pos.y  = (*it_leaf)->parts_offset[i].y + offset_y;
-        v.weight = (*it_leaf)->forgound;
+        v.pos.x  = (*it_leaf)->mp_parts_offset[i].x + offset_x;
+        v.pos.y  = (*it_leaf)->mp_parts_offset[i].y + offset_y;
+        v.weight = (*it_leaf)->mp_foreground;
         v.check  = true;
         votes[i].push_back(v);
       }

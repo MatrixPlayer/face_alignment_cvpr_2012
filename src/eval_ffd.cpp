@@ -36,10 +36,10 @@ getInterOccularDist
   )
 {
   cv::Point2f center_left, center_right;
-  center_left.x  = (annotation.parts[0].x+annotation.parts[2].x)/2;
-  center_left.y  = (annotation.parts[0].y+annotation.parts[2].y)/2;
-  center_right.x = (annotation.parts[6].x+annotation.parts[7].x)/2;
-  center_right.y = (annotation.parts[6].y+annotation.parts[7].y)/2;
+  center_left.x  = (annotation.parts[0].x+annotation.parts[1].x)/2.0f;
+  center_left.y  = (annotation.parts[0].y+annotation.parts[1].y)/2.0f;
+  center_right.x = (annotation.parts[6].x+annotation.parts[7].x)/2.0f;
+  center_right.y = (annotation.parts[6].y+annotation.parts[7].y)/2.0f;
 
   return cv::norm(center_left-center_right);
 };

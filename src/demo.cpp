@@ -8,9 +8,11 @@
 // ----------------------- INCLUDES --------------------------------------------
 #include <trace.hpp>
 #include <Viewer.hpp>
+#include <Tree.hpp>
 #include <ImageSample.hpp>
 #include <MPSample.hpp>
 #include <FaceForest.hpp>
+#include <Constants.hpp>
 #include <face_utils.hpp>
 
 #include <vector>

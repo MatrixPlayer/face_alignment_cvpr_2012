@@ -38,17 +38,7 @@ MPSample::MPSample
   cv::Size bbox = m_image->m_feature_channels[0].size();
   cv::Point center_bbox(bbox.width/2, bbox.height/2);
   m_patch_offset = center_bbox - center_patch;
-
-  // Compute distance to face center
-  distToCenter = 0;
 };
-
-MPSample::MPSample
-  (
-  const ImageSample *sample,
-  cv::Rect patch_bbox
-  ) :
-  m_image(sample), m_patch_bbox(patch_bbox) {};
 
 void
 MPSample::show
@@ -155,27 +145,27 @@ MPSample::makeLeaf
   }
   else
   {
-    leaf.forgound = 0;
+    leaf.mp_foreground = 0;
     num_parts = 0;
     PRINT("something is wrong");
   }
 
   int nElements = samples.size();
 
-  leaf.parts_offset.clear();
-  leaf.parts_offset.resize(num_parts);
-  leaf.variance.resize(num_parts);
-  leaf.pF.resize(num_parts);
-  leaf.nSamples = nElements;
+  leaf.mp_parts_offset.clear();
+  leaf.mp_parts_offset.resize(num_parts);
+  leaf.mp_parts_variance.resize(num_parts);
+  leaf.mp_prob_foreground.resize(num_parts);
+  leaf.mp_samples = nElements;
 
   for (int j = 0; j < num_parts; j++)
   {
-    leaf.parts_offset[j] = cv::Point(0, 0);
-    leaf.variance[j] = boost::numeric::bounds<float>::highest();
-    leaf.pF[j] = 0;
+    leaf.mp_parts_offset[j] = cv::Point(0, 0);
+    leaf.mp_parts_variance[j] = boost::numeric::bounds<float>::highest();
+    leaf.mp_prob_foreground[j] = 0;
   }
-  leaf.patch_offset = cv::Point(0, 0);
-  leaf.forgound = 0;
+  //leaf.mp_patch_offset = cv::Point(0, 0);
+  leaf.mp_foreground = 0;
 
   // Count number of patches close to the facial points
   std::vector<MPSample*>::const_iterator it_sample;
@@ -202,8 +192,8 @@ MPSample::makeLeaf
       mean.x /= static_cast<int>(size);
       mean.y /= static_cast<int>(size);
 
-      leaf.pF[j] = static_cast<float>(sumDist) / size;
-      leaf.parts_offset[j] = mean;
+      leaf.mp_prob_foreground[j] = static_cast<float>(sumDist) / size;
+      leaf.mp_parts_offset[j] = mean;
 
       double var = 0.0;
       for (it_sample = samples.begin(); it_sample < samples.end(); ++it_sample)
@@ -217,7 +207,7 @@ MPSample::makeLeaf
         }
       }
       var /= size;
-      leaf.variance[j] = var;
+      leaf.mp_parts_variance[j] = var;
 
       //std::cout <<"leaf: offset["<<mean.x<<","<<mean.y<<"] pf:"<<leaf.pF[j]<< " var:" << var<<std::endl;
 //            {
@@ -242,18 +232,18 @@ MPSample::makeLeaf
 //            }
 
     }
-    leaf.patch_offset = cv::Point(0, 0);
+    /*leaf.mp_patch_offset = cv::Point(0, 0);
     for (it_sample = samples.begin(); it_sample < samples.end(); ++it_sample)
     {
       if ((*it_sample)->m_is_positive)
       {
-        leaf.patch_offset += (*it_sample)->m_patch_offset;
+        leaf.mp_patch_offset += (*it_sample)->m_patch_offset;
       }
     }
-    leaf.patch_offset.x /= static_cast<int>(size);
-    leaf.patch_offset.y /= static_cast<int>(size);
+    leaf.mp_patch_offset.x /= static_cast<int>(size);
+    leaf.mp_patch_offset.y /= static_cast<int>(size);*/
 
-    leaf.forgound = size / static_cast<float>(samples.size());
+    leaf.mp_foreground = size / static_cast<float>(samples.size());
   }
 };
 
@@ -296,8 +286,8 @@ MPSample::entropie_parts
   for (itSample = set.begin(); itSample < set.end(); itSample++)
     add(sum, (*itSample)->m_prob, sum);
 
-  sum /= static_cast<float>(set.size());float
-  p;
+  sum /= static_cast<float>(set.size());
+  float p;
   for (int i = 0; i < num_parts; i++) {
     p = sum.at<float>(0, i);
     if (p > 0)
