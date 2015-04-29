@@ -53,10 +53,10 @@ ADD_EXECUTABLE(test_cvpr_2012
     
     #${CMAKE_SOURCE_DIR}/src/test_cvpr_2012.cpp
     #${CMAKE_SOURCE_DIR}/src/demo.cpp
-    #${CMAKE_SOURCE_DIR}/src/train_headpose.cpp
+    ${CMAKE_SOURCE_DIR}/src/train_headpose.cpp
     #${CMAKE_SOURCE_DIR}/src/eval_headpose.cpp
     #${CMAKE_SOURCE_DIR}/src/train_ffd.cpp
-    ${CMAKE_SOURCE_DIR}/src/eval_ffd.cpp
+    #${CMAKE_SOURCE_DIR}/src/eval_ffd.cpp
 )
 
 #-- Link the executable to the libraries

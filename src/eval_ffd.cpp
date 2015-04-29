@@ -9,6 +9,7 @@
 #include <trace.hpp>
 #include <Viewer.hpp>
 #include <FaceForest.hpp>
+#include <Constants.hpp>
 #include <face_utils.hpp>
 
 #include <vector>
@@ -57,11 +58,15 @@ void
 evalForest
   (
   FaceForestOptions ff_options,
-  std::vector<FaceAnnotation> &annotations
+  std::vector< std::vector<FaceAnnotation> > &ann
   )
 {
   // Initialize face forest
   FaceForest ff(ff_options);
+
+  std::vector<FaceAnnotation> annotations;
+  for (unsigned int i=0; i < ann.size(); i++)
+    annotations.insert(annotations.end(), ann[i].begin(), ann[i].end());
 
   #ifdef VIEWER
   upm::Viewer viewer;
@@ -150,12 +155,25 @@ main
   if (!loadAnnotations(mp_param.image_path, annotations))
     return EXIT_FAILURE;
 
+  // Separate annotations by head-pose classes
+  std::vector< std::vector<FaceAnnotation> > ann(NUM_HEADPOSE_CLASSES);
+  for (unsigned int i=0; i < annotations.size(); i++)
+    ann[annotations[i].pose+2].push_back(annotations[i]);
+
+  // Evaluate performance using 90% train and 10% test
+  std::vector< std::vector<FaceAnnotation> > test_ann(NUM_HEADPOSE_CLASSES);
+  for (unsigned int i=0; i < ann.size(); i++)
+  {
+    int num_train_imgs = static_cast<int>(ann[i].size() * TRAIN_IMAGES_PERCENTAGE);
+    test_ann[i].insert(test_ann[i].begin(), ann[i].begin()+num_train_imgs, ann[i].end());
+  }
+
   FaceForestOptions ff_options;
   ff_options.fd_option.path_face_cascade = face_cascade;
   ff_options.hp_forest_param = hp_param;
   ff_options.mp_forest_param = mp_param;
 
-  evalForest(ff_options, annotations);
+  evalForest(ff_options, test_ann);
 
   return EXIT_SUCCESS;
 };

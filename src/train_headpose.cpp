@@ -38,7 +38,7 @@ void
 trainTree
   (
   ForestParam hp_param,
-  std::vector<FaceAnnotation> &annotations,
+  std::vector< std::vector<FaceAnnotation> > &ann,
   int idx_tree
   )
 {
@@ -49,28 +49,20 @@ trainTree
   Tree<HeadPoseSample> *tree;
   bool is_tree_load = Tree<HeadPoseSample>::load(&tree, tree_path);
 
-  srand(idx_tree+1);
-  std::random_shuffle(annotations.begin(), annotations.end());
-
-  // Separate annotations by head-pose classes
-  std::vector< std::vector<FaceAnnotation> > cluster(NUM_HEADPOSE_CLASSES);
-  for (unsigned int i=0; i < annotations.size(); i++)
-  {
-    int label = annotations[i].pose + 2;
-    cluster[label].push_back(annotations[i]);
-  }
-
   // Estimate the number of images available for each class
   int imgs_per_class = hp_param.nimages;
-  for (unsigned int i=0; i < cluster.size(); i++)
-    imgs_per_class = std::min(imgs_per_class, static_cast<int>(cluster[i].size()));
+  for (unsigned int i=0; i < ann.size(); i++)
+    imgs_per_class = std::min(imgs_per_class, static_cast<int>(ann[i].size()));
   PRINT("Number of images per class: " << imgs_per_class);
 
-  // Join annotations sorted by head pose
-  annotations.clear();
-  for (unsigned int i=0; i < cluster.size(); i++)
-    for (int j=0; j < imgs_per_class; j++)
-      annotations.push_back(cluster[i][j]);
+  // Random annotations ordered by head pose
+  srand(idx_tree+1);
+  std::vector<FaceAnnotation> annotations;
+  for (unsigned int i=0; i < ann.size(); i++)
+  {
+    std::random_shuffle(ann[i].begin(), ann[i].end());
+    annotations.insert(annotations.end(), ann[i].begin(), ann[i].begin()+imgs_per_class);
+  }
 
   std::vector<HeadPoseSample*> hp_samples;
   hp_samples.reserve(annotations.size()*hp_param.npatches);
@@ -177,13 +169,26 @@ main
   if (!loadAnnotations(hp_param.image_path, annotations))
     return EXIT_FAILURE;
 
-  // Train head-pose tree
-  int idx_tree = atoi(argv[1]);
-  trainTree(hp_param, annotations, idx_tree);
+  // Separate annotations by head-pose classes
+  std::vector< std::vector<FaceAnnotation> > ann(NUM_HEADPOSE_CLASSES);
+  for (unsigned int i=0; i < annotations.size(); i++)
+    ann[annotations[i].pose+2].push_back(annotations[i]);
+
+  // Evaluate performance using 90% train and 10% test
+  std::vector< std::vector<FaceAnnotation> > train_ann(NUM_HEADPOSE_CLASSES);
+  for (unsigned int i=0; i < ann.size(); i++)
+  {
+    int num_train_imgs = static_cast<int>(ann[i].size() * TRAIN_IMAGES_PERCENTAGE);
+    train_ann[i].insert(train_ann[i].begin(), ann[i].begin(), ann[i].begin()+num_train_imgs);
+  }
 
   // Train head-pose forests
-  //for (int i=0; i < hp_param.ntrees; i++)
-  //  trainTree(hp_param, annotations, i);
+  for (int i=0; i < hp_param.ntrees; i++)
+    trainTree(hp_param, train_ann, i);
+
+  // Train head-pose tree
+  /*int idx_tree = atoi(argv[1]);
+  trainTree(hp_param, train_ann, idx_tree);*/
 
   return EXIT_SUCCESS;
 };

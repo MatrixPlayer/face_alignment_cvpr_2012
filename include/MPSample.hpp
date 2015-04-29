@@ -145,8 +145,6 @@ public:
   std::vector<float> mp_parts_variance;           // variance of the votes
   std::vector<float> mp_prob_foreground;          // probability of foreground per each point
   float mp_foreground;                            // probability of face
-  cv::Point_<int> mp_patch_offset;
-  bool mp_save_all;
 
   friend class boost::serialization::access;
   template<class Archive>
@@ -157,8 +155,6 @@ public:
     ar & mp_parts_variance;
     ar & mp_prob_foreground;
     ar & mp_foreground;
-    ar & mp_patch_offset;
-    ar & mp_save_all;
   }
 };
 
