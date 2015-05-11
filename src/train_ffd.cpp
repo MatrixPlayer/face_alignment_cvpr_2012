@@ -165,14 +165,14 @@ main
   }
 
   // Train facial-feature forests
-  for (int i=0; i < NUM_HEADPOSE_CLASSES; i++)
+  /*for (int i=0; i < NUM_HEADPOSE_CLASSES; i++)
     for (int j=0; j < mp_param.ntrees; j++)
-      trainTree(mp_param, train_ann, i, j);
+      trainTree(mp_param, train_ann, i, j);*/
 
   // Train facial-feature tree
-  /*int idx_forest = atoi(argv[1]);
+  int idx_forest = atoi(argv[1]);
   int idx_tree = atoi(argv[2]);
-  trainTree(mp_param, train_ann, idx_forest, idx_tree);*/
+  trainTree(mp_param, train_ann, idx_forest, idx_tree);
 
   return EXIT_SUCCESS;
 };

@@ -183,12 +183,12 @@ main
   }
 
   // Train head-pose forests
-  for (int i=0; i < hp_param.ntrees; i++)
-    trainTree(hp_param, train_ann, i);
+  /*for (int i=0; i < hp_param.ntrees; i++)
+    trainTree(hp_param, train_ann, i);*/
 
   // Train head-pose tree
-  /*int idx_tree = atoi(argv[1]);
-  trainTree(hp_param, train_ann, idx_tree);*/
+  int idx_tree = atoi(argv[1]);
+  trainTree(hp_param, train_ann, idx_tree);
 
   return EXIT_SUCCESS;
 };
